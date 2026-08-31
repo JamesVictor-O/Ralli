@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Clock3, Heart, Repeat2, Share2, UsersRound, X, Zap } from 'lucide-react'
 import { Boost } from '../rewards/Boost.tsx'
+import { ResponseViewer } from '../responses/ResponseViewer.tsx'
 
 export function RalliDetail({ onClose, onJoin }: { onClose: () => void; onJoin: () => void }) {
   const [boostOpen, setBoostOpen] = useState(false)
@@ -46,11 +47,7 @@ export function RalliDetail({ onClose, onJoin }: { onClose: () => void; onJoin: 
             <button className="boost-button" type="button" onClick={() => setBoostOpen(true)}>Boost</button>
           </div>
 
-          <div className="response-preview-grid" aria-label="Recent responses">
-            <img src="https://images.unsplash.com/photo-1523726491678-bf852e717f6a?auto=format&fit=crop&w=600&q=80" alt="Colourful desk objects" width="300" height="300" />
-            <img src="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=600&q=80" alt="A home workspace" width="300" height="300" />
-            <div><strong>+82</strong><span>See all responses</span></div>
-          </div>
+          <ResponseViewer />
         </div>
 
         <footer className="flow-actions">

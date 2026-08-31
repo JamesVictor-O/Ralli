@@ -364,6 +364,18 @@ npm run lint     # Run ESLint
 npm run preview  # Preview the production build
 ```
 
+## Deploying to Vercel
+
+Ralli includes a Vercel configuration for its Vite production build.
+
+1. Import the repository into Vercel.
+2. Keep the detected framework as **Vite**.
+3. Add `VITE_RALLI_CREATOR_ADDRESS` in the project environment variables to enable live Boost payments.
+4. Add the other values from `.env.example` when their corresponding integrations are enabled.
+5. Deploy.
+
+The production build uses Node.js 22 or later and outputs to `dist`.
+
 ## The bigger vision
 
 Ralli starts with simple social challenges, but the underlying idea is larger: what happens when social participation and peer-to-peer value exist in the same experience?

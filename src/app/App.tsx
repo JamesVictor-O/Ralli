@@ -26,7 +26,9 @@ const navItems = [
 
 export default function App() {
   const [activeNav, setActiveNav] = useState('Discover')
-  const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | 'community' | null>(null)
+  const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | 'community' | null>(() =>
+    new URLSearchParams(window.location.search).get('ralli') === 'weirdest-desk-item' ? 'detail' : null,
+  )
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const { status: walletStatus, account } = useWallet()
