@@ -1,0 +1,110 @@
+import { useEffect, useState } from 'react'
+import { AlertCircle, Check, Copy, ExternalLink, LoaderCircle, ShieldCheck, WalletCards, X } from 'lucide-react'
+import { useWallet } from '../../store/wallet.ts'
+
+function shortenAddress(address: string) {
+  return `${address.slice(0, 9)}…${address.slice(-6)}`
+}
+
+export function WalletPanel({ onClose }: { onClose: () => void }) {
+  const { status, account, consensus, blockNumber, error, connect, retry, disconnect } = useWallet()
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
+
+  async function copyAddress(address: string) {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(address)
+    } else {
+      const field = document.createElement('textarea')
+      field.value = address
+      field.style.position = 'fixed'
+      field.style.opacity = '0'
+      document.body.appendChild(field)
+      field.select()
+      document.execCommand('copy')
+      field.remove()
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div className="wallet-backdrop" role="dialog" aria-modal="true" aria-labelledby="wallet-title">
+      <section className="wallet-panel">
+        <header className="wallet-panel__header">
+          <div><p className="eyebrow">Nimiq Pay</p><h2 id="wallet-title">Your wallet</h2></div>
+          <button className="icon-button" type="button" aria-label="Close wallet" onClick={onClose}><X aria-hidden="true" /></button>
+        </header>
+
+        {status === 'initializing' && (
+          <div className="wallet-state" aria-live="polite">
+            <span className="wallet-state__icon"><LoaderCircle className="spin" aria-hidden="true" /></span>
+            <h3>Checking Nimiq Pay</h3><p>Making sure the wallet provider is ready.</p>
+          </div>
+        )}
+
+        {status === 'unavailable' && (
+          <div className="wallet-state">
+            <span className="wallet-state__icon wallet-state__icon--violet"><WalletCards aria-hidden="true" /></span>
+            <h3>Open Ralli in Nimiq Pay</h3>
+            <p>You can explore Ralli here. To connect an account or send NIM, load this app from the Mini Apps section in Nimiq Pay.</p>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="wallet-state" role="alert">
+            <span className="wallet-state__icon wallet-state__icon--coral"><AlertCircle aria-hidden="true" /></span>
+            <h3>Wallet unavailable</h3><p>{error}</p>
+            <button className="button button--ink" type="button" onClick={() => void retry()}>Try again</button>
+          </div>
+        )}
+
+        {(status === 'ready' || status === 'connecting') && (
+          <div className="wallet-state">
+            <span className="wallet-state__icon"><ShieldCheck aria-hidden="true" /></span>
+            <h3>Connect when you need it</h3>
+            <p>Connecting lets Ralli read your selected public address. Your keys always stay in Nimiq Pay.</p>
+            {error && <p className="wallet-inline-error" role="status">{error}</p>}
+            <button className="button button--ink button--wide" type="button" disabled={status === 'connecting'}
+              aria-busy={status === 'connecting'} onClick={() => void connect()}>
+              {status === 'connecting' && <LoaderCircle className="spin" aria-hidden="true" />}
+              {status === 'connecting' ? 'Waiting for approval…' : 'Connect Nimiq account'}
+            </button>
+          </div>
+        )}
+
+        {status === 'connected' && account && (
+          <>
+            <div className="connected-card">
+              <div className="connected-card__status"><span><Check aria-hidden="true" /></span><strong>Connected</strong></div>
+              <p>Public address</p>
+              <div className="address-row">
+                <code>{shortenAddress(account)}</code>
+                <button type="button" aria-label={copied ? 'Wallet address copied' : 'Copy wallet address'} onClick={() => void copyAddress(account)}>
+                  {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                </button>
+              </div>
+              <div className="network-row">
+                <span><i className={consensus ? 'is-online' : ''} />{consensus ? 'Network ready' : 'Syncing network'}</span>
+                {blockNumber !== null && <span>Block {blockNumber.toLocaleString()}</span>}
+              </div>
+            </div>
+            <div className="wallet-security">
+              <ShieldCheck aria-hidden="true" />
+              <p><strong>Every payment asks first.</strong><span>Ralli cannot move NIM without a native Nimiq Pay approval.</span></p>
+            </div>
+            <div className="wallet-panel__actions">
+              <a href="https://wallet.nimiq.com/" target="_blank" rel="noreferrer">Open wallet <ExternalLink aria-hidden="true" /></a>
+              <button type="button" onClick={disconnect}>Disconnect from Ralli</button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  )
+}
