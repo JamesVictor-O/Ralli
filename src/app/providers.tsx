@@ -1,4 +1,5 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
+import type { NimiqClient } from '../nimiq/types.ts'
 import { listAccounts } from '../nimiq/accounts.ts'
 import { getNimiqClient } from '../nimiq/client.ts'
 import { WalletContext, type WalletStatus } from '../store/wallet.ts'
@@ -6,7 +7,15 @@ import { WalletContext, type WalletStatus } from '../store/wallet.ts'
 function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
   if (/reject|declin|cancel|denied/i.test(message)) return 'Connection cancelled. Your wallet was not changed.'
-  return 'Ralli could not reach Nimiq Pay. Please try again.'
+  if (/not injected|inside a Nimiq app|timed?\s*out/i.test(message)) {
+    return 'Open Ralli from the Mini Apps section inside Nimiq Pay, then try again.'
+  }
+  if (/consensus|network|fetch|offline/i.test(message)) {
+    return 'Nimiq Pay is connected, but its network is not ready yet. Check your connection and try again.'
+  }
+  return message && message !== '[object Object]'
+    ? `Nimiq Pay returned: ${message}`
+    : 'Ralli could not connect to your Nimiq account. Please try again.'
 }
 
 export function AppProviders({ children }: PropsWithChildren) {
@@ -16,8 +25,18 @@ export function AppProviders({ children }: PropsWithChildren) {
   const [blockNumber, setBlockNumber] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const refreshNetworkStatus = useCallback(async (client: NimiqClient) => {
+    const [consensusResult, blockResult] = await Promise.allSettled([
+      client.isConsensusEstablished(),
+      client.getBlockNumber(),
+    ])
+
+    if (consensusResult.status === 'fulfilled') setConsensus(consensusResult.value)
+    if (blockResult.status === 'fulfilled') setBlockNumber(blockResult.value)
+  }, [])
+
   const initialize = useCallback(async () => {
-    if (!window.nimiqPay) {
+    if (!window.nimiqPay && !window.nimiq) {
       setStatus('unavailable')
       return
     }
@@ -25,15 +44,14 @@ export function AppProviders({ children }: PropsWithChildren) {
     setError(null)
     try {
       const client = await getNimiqClient()
-      const [isReady, block] = await Promise.all([client.isConsensusEstablished(), client.getBlockNumber()])
-      setConsensus(isReady)
-      setBlockNumber(block)
       setStatus('ready')
+      void refreshNetworkStatus(client)
     } catch (providerError) {
+      console.error('Nimiq Pay initialization failed', providerError)
       setError(friendlyError(providerError))
       setStatus('error')
     }
-  }, [])
+  }, [refreshNetworkStatus])
 
   useEffect(() => {
     void Promise.resolve().then(initialize)
@@ -51,11 +69,14 @@ export function AppProviders({ children }: PropsWithChildren) {
       }
       setAccount(accounts[0])
       setStatus('connected')
+      const client = await getNimiqClient()
+      void refreshNetworkStatus(client)
     } catch (providerError) {
+      console.error('Nimiq account connection failed', providerError)
       setError(friendlyError(providerError))
       setStatus('ready')
     }
-  }, [])
+  }, [refreshNetworkStatus])
 
   const disconnect = useCallback(() => {
     setAccount(null)

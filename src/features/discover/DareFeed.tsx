@@ -17,6 +17,6 @@ const rallis: Dare[] = [
   },
 ]
 
-export function DareFeed({ onOpen, onJoin }: { onOpen: () => void; onJoin: () => void }) {
-  return <section className="dare-feed" aria-label="Rallis for you">{rallis.map((ralli) => <DareCard dare={ralli} key={ralli.id} onOpen={onOpen} onJoin={onJoin} />)}</section>
+export function DareFeed({ onOpen, onJoin, onBoost }: { onOpen: () => void; onJoin: () => void; onBoost: (ralli: Dare) => void }) {
+  return <section className="dare-feed" aria-label="Rallis for you">{rallis.map((ralli) => <DareCard dare={ralli} key={ralli.id} onOpen={onOpen} onJoin={onJoin} onBoost={() => onBoost(ralli)} />)}</section>
 }

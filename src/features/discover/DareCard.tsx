@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type MouseEvent, useState } from 'react'
-import { ChevronRight, Heart, Repeat2, UsersRound, Zap } from 'lucide-react'
+import { ChevronRight, Heart, Repeat2, UsersRound } from 'lucide-react'
 import { ResponsePreview } from './ResponsePreview.tsx'
+import { RewardPool } from '../rewards/RewardPool.tsx'
 
 export interface Dare {
   id: string; author: string; initials: string; time: string; prompt: string; category: string
@@ -8,7 +9,7 @@ export interface Dare {
   tone: 'coral' | 'violet'
 }
 
-export function DareCard({ dare, onOpen, onJoin }: { dare: Dare; onOpen: () => void; onJoin: () => void }) {
+export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen: () => void; onJoin: () => void; onBoost: () => void }) {
   const [liked, setLiked] = useState(false)
 
   function isInteractiveTarget(target: EventTarget | null) {
@@ -35,9 +36,10 @@ export function DareCard({ dare, onOpen, onJoin }: { dare: Dare; onOpen: () => v
           <span className={`avatar avatar--author avatar--${dare.tone}`}>{dare.initials}</span>
           <span><strong>{dare.author} started a Ralli</strong><small>{dare.time} ago · {dare.category}</small></span>
         </div>
-        <span className="reward-pill"><Zap aria-hidden="true" />{dare.reward} NIM</span>
+        <span className="ralli-funded">Funded Ralli</span>
       </div>
       <h3 className="dare-card__title">{dare.prompt}</h3>
+      <RewardPool total={dare.reward} starter={dare.id === 'desk' ? 5 : 10} boosts={dare.id === 'desk' ? 7 : 14} onBoost={onBoost} compact />
       <div className="dare-card__media">
         <img src={dare.image} alt={dare.imageAlt} width="720" height="520" />
         <div className="media-badge"><UsersRound aria-hidden="true" /><span><strong>{dare.participants}</strong> responses</span></div>

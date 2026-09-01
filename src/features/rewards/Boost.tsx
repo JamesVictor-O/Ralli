@@ -11,7 +11,14 @@ function paymentError(error: unknown) {
   return message
 }
 
-export function Boost({ onClose }: { onClose: () => void }) {
+interface BoostProps {
+  onClose: () => void
+  creator?: string
+  ralli?: string
+  pool?: number
+}
+
+export function Boost({ onClose, creator = 'Nia', ralli = 'weirdest desk item', pool = 12 }: BoostProps) {
   const { status, connect } = useWallet()
   const [amount, setAmount] = useState('2')
   const [state, setState] = useState<'idle' | 'submitting' | 'success'>('idle')
@@ -29,7 +36,7 @@ export function Boost({ onClose }: { onClose: () => void }) {
     setError('')
     setState('submitting')
     try {
-      await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: 'Ralli boost: weirdest desk item' })
+      await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli boost: ${ralli}` })
       setState('success')
     } catch (paymentFailure) {
       setError(paymentError(paymentFailure))
@@ -71,8 +78,8 @@ export function Boost({ onClose }: { onClose: () => void }) {
         ) : (
           <form className="payment-form" onSubmit={submit}>
             <div className="payment-recipient">
-              <span className="avatar avatar--author avatar--coral">NK</span>
-              <span><small>Boosting Nia’s Ralli</small><strong>Reward pool · 12 NIM</strong></span>
+              <span className="avatar avatar--author avatar--coral">{creator.slice(0, 2).toUpperCase()}</span>
+              <span><small>Boosting {creator}’s Ralli</small><strong>Reward pool · {pool} NIM</strong></span>
             </div>
             <fieldset className="amount-picker">
               <legend>Choose an amount</legend>

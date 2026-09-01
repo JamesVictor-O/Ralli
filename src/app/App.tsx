@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, ChevronRight, Flame, Heart, Home, Plus, Search,
+  Bell, ChevronRight, Flame, HandCoins, Heart, Home, Plus, Search,
   Sparkles, Trophy, UserRound, UsersRound, WalletCards, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
+import type { Dare } from '../features/discover/DareCard.tsx'
 import { RalliDetail } from '../features/rallis/RalliDetail.tsx'
 import { CreateRalli } from '../features/rallis/CreateRalli.tsx'
 import { JoinRalli } from '../features/rallis/JoinRalli.tsx'
@@ -14,6 +16,8 @@ import { CommunityRalli } from '../features/rallis/CommunityRalli.tsx'
 import { WalletPanel } from '../components/navigation/WalletPanel.tsx'
 import { useWallet } from '../store/wallet.ts'
 import { SearchPanel, type SearchResultId } from '../features/discover/SearchPanel.tsx'
+import { SplashScreen } from '../components/ui/SplashScreen.tsx'
+import { Boost } from '../features/rewards/Boost.tsx'
 import '../styles/index.css'
 
 const navItems = [
@@ -25,13 +29,17 @@ const navItems = [
 ]
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
+  const reduceMotion = useReducedMotion()
   const [activeNav, setActiveNav] = useState('Discover')
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | 'community' | null>(() =>
     new URLSearchParams(window.location.search).get('ralli') === 'weirdest-desk-item' ? 'detail' : null,
   )
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
   const { status: walletStatus, account } = useWallet()
+  const finishSplash = useCallback(() => setShowSplash(false), [])
 
   useEffect(() => {
     const openSearch = (event: KeyboardEvent) => {
@@ -59,10 +67,21 @@ export default function App() {
   }
 
   return (
+    <>
+    <AnimatePresence mode="wait">
+      {showSplash ? (
+        <SplashScreen key="splash" onComplete={finishSplash} />
+      ) : (
+        <motion.div
+          key="app"
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0, 0, 0.2, 1] }}
+        >
     <div className={`app-shell ${activeNav !== 'Discover' ? 'app-shell--focus' : ''}`}>
       <aside className="side-nav" aria-label="Primary navigation">
         <a className="brand" href="/" aria-label="Ralli home">
-          <span className="brand-mark" aria-hidden="true">R</span><span>ralli</span>
+          <img className="brand-mark" src="/railIcon.png" width="1254" height="1254" alt="" /><span>ralli</span>
         </a>
         <nav className="side-nav__links">
           {navItems.filter((item) => !item.primary).map((item) => {
@@ -91,7 +110,7 @@ export default function App() {
       <main className="main-column">
         <header className="mobile-header">
           <a className="brand" href="/" aria-label="Ralli home">
-            <span className="brand-mark" aria-hidden="true">R</span><span>ralli</span>
+            <img className="brand-mark" src="/railIcon.png" width="1254" height="1254" alt="" /><span>ralli</span>
           </a>
           <div className="header-actions">
             <button className="icon-button" type="button" aria-label="Search" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /></button>
@@ -109,7 +128,10 @@ export default function App() {
         <section className="daily-ralli" aria-labelledby="daily-heading">
           <div className="daily-ralli__glow" aria-hidden="true" />
           <div className="daily-ralli__content">
-            <span className="pill pill--dark"><Sparkles aria-hidden="true" />Daily Ralli</span>
+            <div className="daily-ralli__pills">
+              <span className="pill pill--dark"><Sparkles aria-hidden="true" />Daily Ralli</span>
+              <span className="pill pill--funded"><Zap aria-hidden="true" />50 NIM pool</span>
+            </div>
             <div>
               <p className="daily-ralli__kicker">Everyone gets the same prompt</p>
               <h2 id="daily-heading">Make something ordinary look dramatic.</h2>
@@ -127,6 +149,17 @@ export default function App() {
           </div>
         </section>
 
+        <section className="economy-loop" aria-labelledby="economy-heading">
+          <header><div><p className="eyebrow">Powered by Nimiq</p><h2 id="economy-heading">Participation has real momentum.</h2></div><span className="nim-mark">NIM</span></header>
+          <div className="economy-loop__steps">
+            <div><span><Sparkles aria-hidden="true" /></span><p><strong>Reward</strong><small>A creator starts the pool.</small></p></div>
+            <i aria-hidden="true">→</i>
+            <div><span><Zap aria-hidden="true" /></span><p><strong>Boost</strong><small>The crowd grows it.</small></p></div>
+            <i aria-hidden="true">→</i>
+            <div><span><HandCoins aria-hidden="true" /></span><p><strong>Tip</strong><small>Great responses earn directly.</small></p></div>
+          </div>
+        </section>
+
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
           <div className="feed-tabs" role="tablist" aria-label="Discover feed">
@@ -135,7 +168,7 @@ export default function App() {
             <button type="button" role="tab" aria-selected="false">New</button>
           </div>
         </div>
-        <DareFeed onOpen={() => setActiveFlow('detail')} onJoin={() => setActiveFlow('join')} />
+        <DareFeed onOpen={() => setActiveFlow('detail')} onJoin={() => setActiveFlow('join')} onBoost={setBoostTarget} />
         </>)}
         {activeNav === 'Activity' && <Activity />}
         {activeNav === 'Chains' && <RalliChain />}
@@ -194,6 +227,7 @@ export default function App() {
       )}
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
+      {boostTarget && <Boost creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {navItems.map((item) => {
@@ -216,5 +250,9 @@ export default function App() {
         })}
       </nav>
     </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }

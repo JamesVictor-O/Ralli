@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Clock3, Heart, Repeat2, Share2, UsersRound, X, Zap } from 'lucide-react'
+import { ArrowLeft, Clock3, Heart, Repeat2, Share2, UsersRound, X } from 'lucide-react'
 import { Boost } from '../rewards/Boost.tsx'
+import { RewardPool } from '../rewards/RewardPool.tsx'
 import { ResponseViewer } from '../responses/ResponseViewer.tsx'
 
 export function RalliDetail({ onClose, onJoin }: { onClose: () => void; onJoin: () => void }) {
@@ -41,11 +42,11 @@ export function RalliDetail({ onClose, onJoin }: { onClose: () => void; onJoin: 
             <span><Clock3 aria-hidden="true" /><strong>22h</strong><small>left</small></span>
           </div>
 
-          <div className="reward-panel">
-            <span className="rail-icon rail-icon--lime"><Zap aria-hidden="true" /></span>
-            <div><p className="eyebrow">Reward pool</p><strong>12 NIM</strong><small>for the crowd favourite</small></div>
-            <button className="boost-button" type="button" onClick={() => setBoostOpen(true)}>Boost</button>
+          <div className="reward-callout">
+            <div><p className="eyebrow">NIM makes the crowd count</p><h2>The favourite response earns the pool.</h2></div>
+            <p>Nia started it with 5 NIM. Seven more came from people who want to see the Ralli keep moving.</p>
           </div>
+          <RewardPool total={12} starter={5} boosts={7} onBoost={() => setBoostOpen(true)} />
 
           <ResponseViewer />
         </div>
