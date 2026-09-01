@@ -5,7 +5,7 @@ import { RewardPool } from '../rewards/RewardPool.tsx'
 
 export interface Dare {
   id: string; author: string; initials: string; time: string; prompt: string; category: string
-  participants: number; reactions: number; reward: number; image: string; imageAlt: string
+  participants: number; reactions: number; passes: number; reward: number; starterReward: number; boosts: number; image: string; imageAlt: string
   tone: 'coral' | 'violet'
 }
 
@@ -36,10 +36,10 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
           <span className={`avatar avatar--author avatar--${dare.tone}`}>{dare.initials}</span>
           <span><strong>{dare.author} started a Ralli</strong><small>{dare.time} ago · {dare.category}</small></span>
         </div>
-        <span className="ralli-funded">Funded Ralli</span>
+        <span className="ralli-funded">{dare.reward > 0 ? 'Funded Ralli' : 'Open Ralli'}</span>
       </div>
       <h3 className="dare-card__title">{dare.prompt}</h3>
-      <RewardPool total={dare.reward} starter={dare.id === 'desk' ? 5 : 10} boosts={dare.id === 'desk' ? 7 : 14} onBoost={onBoost} compact />
+      <RewardPool total={dare.reward} starter={dare.starterReward} boosts={dare.boosts} onBoost={onBoost} compact />
       <div className="dare-card__media">
         <img src={dare.image} alt={dare.imageAlt} width="720" height="520" />
         <div className="media-badge"><UsersRound aria-hidden="true" /><span><strong>{dare.participants}</strong> responses</span></div>
@@ -48,7 +48,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
         <button className={`reaction-button ${liked ? 'is-liked' : ''}`} type="button" aria-pressed={liked} onClick={() => setLiked((value) => !value)}>
           <Heart aria-hidden="true" fill={liked ? 'currentColor' : 'none'} /><span>{dare.reactions + (liked ? 1 : 0)}</span>
         </button>
-        <span><Repeat2 aria-hidden="true" /> Passed 17 times</span>
+        <span><Repeat2 aria-hidden="true" /> Passed {dare.passes} times</span>
         <button className="join-button" type="button" onClick={onJoin}>Join Ralli <ChevronRight aria-hidden="true" /></button>
       </div>
       <ResponsePreview

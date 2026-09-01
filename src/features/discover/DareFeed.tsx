@@ -1,22 +1,29 @@
 import { DareCard, type Dare } from './DareCard.tsx'
+import { AlertCircle, Sparkles } from 'lucide-react'
+import { useRalliFeed } from '../../hooks/useRalliFeed.ts'
+import { demoRallis } from './demoRallis.ts'
 
-const rallis: Dare[] = [
-  {
-    id: 'desk', author: 'Nia', initials: 'NK', time: '8 min',
-    prompt: 'Show us the weirdest thing on your desk.', category: 'Just for fun',
-    participants: 84, reactions: 192, reward: 12,
-    image: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=1200&q=85',
-    imageAlt: 'A creative desk filled with stationery and small objects', tone: 'coral',
-  },
-  {
-    id: 'sky', author: 'Milo', initials: 'MO', time: '23 min',
-    prompt: 'Take a picture of the sky where you are right now.', category: 'Around the world',
-    participants: 341, reactions: 628, reward: 24,
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85',
-    imageAlt: 'A dramatic pastel sky over a distant landscape', tone: 'violet',
-  },
-]
+interface DareFeedProps {
+  onOpen: () => void
+  onJoin: () => void
+  onBoost: (ralli: Dare) => void
+  onCreate: () => void
+}
 
-export function DareFeed({ onOpen, onJoin, onBoost }: { onOpen: () => void; onJoin: () => void; onBoost: (ralli: Dare) => void }) {
+export function DareFeed({ onOpen, onJoin, onBoost, onCreate }: DareFeedProps) {
+  const { rallis, status, error, retry } = useRalliFeed(demoRallis)
+
+  if (status === 'loading') {
+    return <section className="dare-feed" aria-label="Loading Rallis" aria-busy="true">{[0, 1].map((item) => <div className="dare-card feed-skeleton" key={item}><span /><strong /><i /><div /></div>)}</section>
+  }
+
+  if (status === 'error') {
+    return <section className="feed-state" role="alert"><span className="feed-state__icon feed-state__icon--error"><AlertCircle aria-hidden="true" /></span><h3>Couldn’t load the Rallis</h3><p>{error || 'This is usually a network hiccup.'}</p><button className="button button--ink" type="button" onClick={() => void retry()}>Try again</button></section>
+  }
+
+  if (status === 'empty') {
+    return <section className="feed-state"><span className="feed-state__icon"><Sparkles aria-hidden="true" /></span><h3>The first Ralli starts here</h3><p>No one has started one yet. Give the community something worth joining.</p><button className="button button--ink" type="button" onClick={onCreate}>Start a Ralli</button></section>
+  }
+
   return <section className="dare-feed" aria-label="Rallis for you">{rallis.map((ralli) => <DareCard dare={ralli} key={ralli.id} onOpen={onOpen} onJoin={onJoin} onBoost={() => onBoost(ralli)} />)}</section>
 }

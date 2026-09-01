@@ -168,7 +168,7 @@ export default function App() {
             <button type="button" role="tab" aria-selected="false">New</button>
           </div>
         </div>
-        <DareFeed onOpen={() => setActiveFlow('detail')} onJoin={() => setActiveFlow('join')} onBoost={setBoostTarget} />
+        <DareFeed onOpen={() => setActiveFlow('detail')} onJoin={() => setActiveFlow('join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} />
         </>)}
         {activeNav === 'Activity' && <Activity />}
         {activeNav === 'Chains' && <RalliChain />}
