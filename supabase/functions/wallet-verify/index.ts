@@ -2,6 +2,26 @@ import { corsHeaders, json } from '../_shared/http.ts'
 import { requireUser } from '../_shared/auth.ts'
 import { normalizeNimiqAddress, verifyNimiqProof } from '../_shared/nimiq.ts'
 
+type AdminClient = Awaited<ReturnType<typeof requireUser>>['admin']
+
+function walletLoginEmail(profileId: string) {
+  return `wallet-${profileId}@wallet.ralli.internal`
+}
+
+// Every wallet-verified profile gets a durable synthetic login email so that
+// proving the same address again (e.g. on another device) can sign the
+// caller into this profile via a magic-link token, instead of failing.
+async function ensureWalletLoginEmail(admin: AdminClient, profileId: string) {
+  const { data, error } = await admin.auth.admin.getUserById(profileId)
+  if (error) throw error
+  if (data.user?.email) return data.user.email
+
+  const email = walletLoginEmail(profileId)
+  const { error: updateError } = await admin.auth.admin.updateUserById(profileId, { email, email_confirm: true })
+  if (updateError) throw updateError
+  return email
+}
+
 Deno.serve(async (request) => {
   const headers = corsHeaders(request)
   if (!headers) return json({ error: 'Origin is not allowed.' }, 403, {})
@@ -48,10 +68,46 @@ Deno.serve(async (request) => {
     })
     if (completionError) {
       if (completionError.code === '23505') {
-        return json({ error: 'This Nimiq address is already linked to another Ralli profile.' }, 409, headers)
+        // Someone already proved this address on a different profile (a different
+        // device/browser). Since the signature just proved this caller controls the
+        // same address, sign them into that existing profile instead of erroring.
+        const { data: existingProfile, error: lookupError } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('nimiq_address', address)
+          .maybeSingle()
+        if (lookupError) throw lookupError
+        if (!existingProfile) {
+          return json({ error: 'This Nimiq address is already linked to another Ralli profile.' }, 409, headers)
+        }
+
+        try {
+          const email = await ensureWalletLoginEmail(admin, existingProfile.id)
+          const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
+          if (linkError || !link?.properties?.hashed_token) throw linkError ?? new Error('NO_TOKEN')
+
+          await admin
+            .from('wallet_verification_challenges')
+            .update({ used_at: new Date().toISOString() })
+            .eq('id', challenge.id)
+
+          return json({
+            relogin: true,
+            address,
+            email,
+            tokenHash: link.properties.hashed_token,
+          }, 200, headers)
+        } catch (reloginError) {
+          console.error('wallet-verify relogin failed', reloginError)
+          return json({ error: 'This Nimiq address is already linked to another Ralli profile.' }, 409, headers)
+        }
       }
       throw completionError
     }
+
+    ensureWalletLoginEmail(admin, user.id).catch((backfillError) => {
+      console.error('wallet-verify login email backfill failed', backfillError)
+    })
 
     return json({ verified: true, address }, 200, headers)
   } catch (error) {

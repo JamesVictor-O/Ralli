@@ -5,7 +5,9 @@ import { bytesToHex, getNimiqHub, isNimiqPayContext } from './hub.ts'
 import { isNimiqError } from './types.ts'
 
 type ChallengeResponse = { challengeId: string; message: string; expiresAt: string }
-type VerificationResponse = { verified: true; address: string }
+type VerificationResponse =
+  | { verified: true; address: string }
+  | { relogin: true; address: string; email: string; tokenHash: string }
 
 async function functionError(error: unknown, fallback: string) {
   if (error instanceof FunctionsHttpError) {
@@ -53,6 +55,19 @@ export async function verifyConnectedNimiqAddress(address: string) {
       signatureMode,
     },
   })
-  if (error || !data?.verified) throw await functionError(error, 'The wallet signature could not be verified.')
+  if (error || !data) throw await functionError(error, 'The wallet signature could not be verified.')
+
+  if ('relogin' in data && data.relogin) {
+    // This address is already verified on another profile (e.g. a different device).
+    // Redeem the one-time token to switch this browser into that existing account.
+    const { error: otpError } = await database.auth.verifyOtp({
+      email: data.email,
+      token_hash: data.tokenHash,
+      type: 'magiclink',
+    })
+    if (otpError) throw new Error('This wallet is already registered, but Ralli could not switch you into that account. Please try again.')
+    return { verified: true as const, address: data.address }
+  }
+
   return data
 }
