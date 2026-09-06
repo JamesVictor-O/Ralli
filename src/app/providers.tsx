@@ -1,8 +1,9 @@
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
+import HubApi from '@nimiq/hub-api'
 import type { NimiqClient } from '../nimiq/types.ts'
 import { listAccounts } from '../nimiq/accounts.ts'
 import { getNimiqClient } from '../nimiq/client.ts'
-import { isNimiqPayContext } from '../nimiq/hub.ts'
+import { getNimiqHub, isMobileHubClient, isNimiqPayContext } from '../nimiq/hub.ts'
 import { WalletContext, type WalletStatus } from '../store/wallet.ts'
 
 function friendlyError(error: unknown) {
@@ -39,7 +40,29 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   const initialize = useCallback(async () => {
     if (!isNimiqPayContext()) {
-      setStatus(window.localStorage.getItem('ralli-nimiq-address') ? 'connected' : 'ready')
+      // On mobile, connect() redirects to Nimiq Hub instead of opening a popup (see
+      // isMobileHubClient). The result comes back appended to this same URL, so check
+      // for it before falling back to the stored address from a previous session.
+      let resolvedFromRedirect = false
+      const hub = getNimiqHub()
+      hub.on(HubApi.RequestType.CHOOSE_ADDRESS, (result) => {
+        resolvedFromRedirect = true
+        setAccount(result.address)
+        window.localStorage.setItem('ralli-nimiq-address', result.address)
+        setError(null)
+        setStatus('connected')
+      }, (redirectError) => {
+        resolvedFromRedirect = true
+        console.error('Nimiq Hub redirect connection failed', redirectError)
+        setError(friendlyError(redirectError))
+        setStatus('ready')
+      })
+      try {
+        await hub.checkRedirectResponse()
+      } catch (checkError) {
+        console.error('Nimiq Hub redirect check failed', checkError)
+      }
+      if (!resolvedFromRedirect) setStatus(window.localStorage.getItem('ralli-nimiq-address') ? 'connected' : 'ready')
       return
     }
     setStatus('initializing')
@@ -63,6 +86,14 @@ export function AppProviders({ children }: PropsWithChildren) {
     setStatus('connecting')
     setError(null)
     try {
+      if (!isNimiqPayContext() && isMobileHubClient()) {
+        // Navigates away to Nimiq Hub; the result is picked up by initialize() on return.
+        await getNimiqHub().chooseAddress<typeof HubApi.BehaviorType.REDIRECT>(
+          { appName: 'Ralli' },
+          new HubApi.RedirectRequestBehavior(window.location.href),
+        )
+        return
+      }
       const accounts = await listAccounts()
       if (!accounts.length) {
         setError('No Nimiq account was selected.')
