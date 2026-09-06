@@ -32,7 +32,7 @@ function toNim(luna: number | null) {
   return Math.max(0, Number(luna ?? 0) / LUNA_PER_NIM)
 }
 
-function mapFeedRow(row: RalliFeedRow, index: number): Dare {
+export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
   const author = row.display_name || row.handle || 'Ralli creator'
   return {
     id: row.id ?? `ralli-${index}`,
@@ -50,7 +50,16 @@ function mapFeedRow(row: RalliFeedRow, index: number): Dare {
     image: mediaUrl(row.cover_path, index),
     imageAlt: row.prompt ? `Cover for ${row.prompt}` : 'Ralli cover',
     tone: index % 2 === 0 ? 'coral' : 'violet',
+    description: row.description || '',
+    endsAt: row.ends_at || undefined,
+    creatorId: row.creator_id || undefined,
   }
+}
+
+export async function fetchRalliById(id: string) {
+  const { data, error } = await requireSupabase().from('ralli_feed').select('*').eq('id', id).single()
+  if (error) throw error
+  return mapFeedRow(data)
 }
 
 export async function fetchRalliFeed() {

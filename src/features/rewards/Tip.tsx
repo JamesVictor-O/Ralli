@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Check, HandCoins, LoaderCircle, ShieldCheck, X } from 'lucide-react'
-import { sendNimPayment } from '../../nimiq/payments.ts'
+import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { useWallet } from '../../store/wallet.ts'
+import { recordPaymentSubmission } from '../../lib/payments.ts'
 
 const amounts = ['0.5', '1', '2', '5']
 
@@ -11,12 +12,12 @@ function tipError(error: unknown) {
   return message
 }
 
-export function Tip({ author, onClose }: { author: string; onClose: () => void }) {
+export function Tip({ responseId, recipientAddress, author, onClose }: { responseId: string; recipientAddress: string | null; author: string; onClose: () => void }) {
   const { status, connect } = useWallet()
   const [amount, setAmount] = useState('1')
   const [state, setState] = useState<'idle' | 'submitting' | 'success'>('idle')
   const [error, setError] = useState('')
-  const recipient = (import.meta.env.VITE_RALLI_REWARD_ADDRESS || import.meta.env.VITE_RALLI_CREATOR_ADDRESS) as string | undefined
+  const recipient = recipientAddress ?? undefined
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && onClose()
@@ -29,7 +30,8 @@ export function Tip({ author, onClose }: { author: string; onClose: () => void }
     setError('')
     setState('submitting')
     try {
-      await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli tip for ${author}` })
+      const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli tip: ${responseId}` })
+      await recordPaymentSubmission({ kind: 'tip', responseId, amountLuna: nimToLuna(amount), transactionHash })
       setState('success')
     } catch (failure) {
       setError(tipError(failure))
@@ -48,7 +50,7 @@ export function Tip({ author, onClose }: { author: string; onClose: () => void }
         {state === 'success' ? (
           <div className="payment-success" aria-live="polite">
             <span><Check aria-hidden="true" /></span><h3>Tip sent</h3>
-            <p>{author} received {amount} NIM directly from you.</p>
+            <p>Your {amount} NIM tip was sent and its receipt is recorded for confirmation.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : status !== 'connected' ? (
@@ -64,7 +66,7 @@ export function Tip({ author, onClose }: { author: string; onClose: () => void }
           <div className="wallet-state" role="alert">
             <span className="wallet-state__icon wallet-state__icon--coral"><HandCoins aria-hidden="true" /></span>
             <h3>Tips need a recipient</h3>
-            <p>Add the response recipient’s public address to <code>VITE_RALLI_REWARD_ADDRESS</code>.</p>
+            <p>{author} needs to verify a Nimiq address before receiving tips.</p>
             <button className="button button--soft" type="button" onClick={onClose}>Close</button>
           </div>
         ) : (

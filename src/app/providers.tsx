@@ -2,25 +2,27 @@ import { type PropsWithChildren, useCallback, useEffect, useMemo, useState } fro
 import type { NimiqClient } from '../nimiq/types.ts'
 import { listAccounts } from '../nimiq/accounts.ts'
 import { getNimiqClient } from '../nimiq/client.ts'
+import { isNimiqPayContext } from '../nimiq/hub.ts'
 import { WalletContext, type WalletStatus } from '../store/wallet.ts'
 
 function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
+  const walletName = isNimiqPayContext() ? 'Nimiq Pay' : 'Nimiq Hub'
   if (/reject|declin|cancel|denied/i.test(message)) return 'Connection cancelled. Your wallet was not changed.'
   if (/not injected|inside a Nimiq app|timed?\s*out/i.test(message)) {
     return 'Open Ralli from the Mini Apps section inside Nimiq Pay, then try again.'
   }
   if (/consensus|network|fetch|offline/i.test(message)) {
-    return 'Nimiq Pay is connected, but its network is not ready yet. Check your connection and try again.'
+    return `${walletName} could not reach the network. Check your connection and try again.`
   }
   return message && message !== '[object Object]'
-    ? `Nimiq Pay returned: ${message}`
+    ? `${walletName} returned: ${message}`
     : 'Ralli could not connect to your Nimiq account. Please try again.'
 }
 
 export function AppProviders({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<WalletStatus>('initializing')
-  const [account, setAccount] = useState<string | null>(null)
+  const [account, setAccount] = useState<string | null>(() => window.localStorage.getItem('ralli-nimiq-address'))
   const [consensus, setConsensus] = useState<boolean | null>(null)
   const [blockNumber, setBlockNumber] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,8 +38,8 @@ export function AppProviders({ children }: PropsWithChildren) {
   }, [])
 
   const initialize = useCallback(async () => {
-    if (!window.nimiqPay && !window.nimiq) {
-      setStatus('unavailable')
+    if (!isNimiqPayContext()) {
+      setStatus(window.localStorage.getItem('ralli-nimiq-address') ? 'connected' : 'ready')
       return
     }
     setStatus('initializing')
@@ -68,9 +70,12 @@ export function AppProviders({ children }: PropsWithChildren) {
         return
       }
       setAccount(accounts[0])
+      window.localStorage.setItem('ralli-nimiq-address', accounts[0])
       setStatus('connected')
-      const client = await getNimiqClient()
-      void refreshNetworkStatus(client)
+      if (isNimiqPayContext()) {
+        const client = await getNimiqClient()
+        void refreshNetworkStatus(client)
+      }
     } catch (providerError) {
       console.error('Nimiq account connection failed', providerError)
       setError(friendlyError(providerError))
@@ -80,6 +85,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   const disconnect = useCallback(() => {
     setAccount(null)
+    window.localStorage.removeItem('ralli-nimiq-address')
     setStatus('ready')
     setError(null)
   }, [])

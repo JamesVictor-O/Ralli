@@ -41,6 +41,12 @@ type ResponseRow = {
   updated_at: string
 }
 
+type ReactionRow = { id: string; response_id: string; user_id: string; kind: string; created_at: string }
+type RalliPassRow = { id: string; ralli_id: string; response_id: string | null; passed_by: string; passed_to: string | null; share_code: string; created_at: string }
+type PoolContributionRow = { id: string; ralli_id: string; contributor_id: string; kind: Database['public']['Enums']['contribution_kind']; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
+type ResponseTipRow = { id: string; response_id: string; sender_id: string; recipient_id: string; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
+type ActivityEventRow = { id: string; user_id: string; actor_id: string | null; ralli_id: string | null; response_id: string | null; kind: string; payload: Json; read_at: string | null; created_at: string }
+
 export type RalliFeedRow = {
   id: string | null
   creator_id: string | null
@@ -73,7 +79,7 @@ export interface Database {
       }
       rallis: {
         Row: RalliRow
-        Insert: Partial<Omit<RalliRow, 'id' | 'creator_id' | 'prompt' | 'ends_at'>> & {
+        Insert: Partial<Omit<RalliRow, 'creator_id' | 'prompt' | 'ends_at'>> & {
           creator_id: string
           prompt: string
           ends_at: string
@@ -91,6 +97,36 @@ export interface Database {
         Update: Partial<Omit<ResponseRow, 'id' | 'ralli_id' | 'author_id' | 'created_at' | 'updated_at'>>
         Relationships: []
       }
+      reactions: {
+        Row: ReactionRow
+        Insert: Omit<ReactionRow, 'id' | 'created_at'>
+        Update: never
+        Relationships: []
+      }
+      ralli_passes: {
+        Row: RalliPassRow
+        Insert: Partial<Pick<RalliPassRow, 'response_id' | 'passed_to'>> & Pick<RalliPassRow, 'ralli_id' | 'passed_by'>
+        Update: never
+        Relationships: []
+      }
+      pool_contributions: {
+        Row: PoolContributionRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      response_tips: {
+        Row: ResponseTipRow
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      activity_events: {
+        Row: ActivityEventRow
+        Insert: never
+        Update: Pick<ActivityEventRow, 'read_at'>
+        Relationships: []
+      }
     }
     Views: {
       ralli_feed: {
@@ -102,6 +138,10 @@ export interface Database {
       has_verified_nimiq_address: {
         Args: { profile_id: string }
         Returns: boolean
+      }
+      complete_wallet_verification: {
+        Args: { challenge_id: string; profile_id: string; verified_address: string }
+        Returns: undefined
       }
     }
     Enums: {

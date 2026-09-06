@@ -1,4 +1,5 @@
 import { getNimiqClient } from './client.ts'
+import { getNimiqHub, isNimiqPayContext } from './hub.ts'
 import { isNimiqError } from './types.ts'
 
 export const LUNA_PER_NIM = 100_000
@@ -19,6 +20,15 @@ export function nimToLuna(amount: string) {
 
 export async function sendNimPayment({ recipient, amountNim, message }: NimPayment) {
   if (!recipient.trim()) throw new Error('This payment recipient has not been configured.')
+  if (!isNimiqPayContext()) {
+    const transaction = await getNimiqHub().checkout({
+      appName: 'Ralli',
+      recipient,
+      value: nimToLuna(amountNim),
+      extraData: message,
+    })
+    return transaction.hash
+  }
   const client = await getNimiqClient()
   const transaction = message
     ? await client.sendBasicTransactionWithData({ recipient, value: nimToLuna(amountNim), data: message })

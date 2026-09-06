@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, ChevronRight, Flame, HandCoins, Heart, Home, Plus, Search,
-  Sparkles, Trophy, UserRound, UsersRound, WalletCards, Zap,
+  Bell, ChevronRight, HandCoins, Home, Plus, Search,
+  Sparkles, UserRound, WalletCards, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
 import type { Dare } from '../features/discover/DareCard.tsx'
@@ -12,12 +12,12 @@ import { JoinRalli } from '../features/rallis/JoinRalli.tsx'
 import { Activity } from '../features/activity/Activity.tsx'
 import { RalliChain } from '../features/chains/RalliChain.tsx'
 import { Profile } from '../features/profile/Profile.tsx'
-import { CommunityRalli } from '../features/rallis/CommunityRalli.tsx'
 import { WalletPanel } from '../components/navigation/WalletPanel.tsx'
 import { useWallet } from '../store/wallet.ts'
-import { SearchPanel, type SearchResultId } from '../features/discover/SearchPanel.tsx'
+import { SearchPanel } from '../features/discover/SearchPanel.tsx'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
 import { Boost } from '../features/rewards/Boost.tsx'
+import { fetchRalliById } from '../lib/rallis.ts'
 import '../styles/index.css'
 
 const navItems = [
@@ -32,14 +32,15 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true)
   const reduceMotion = useReducedMotion()
   const [activeNav, setActiveNav] = useState('Discover')
-  const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | 'community' | null>(() =>
-    new URLSearchParams(window.location.search).get('ralli') === 'weirdest-desk-item' ? 'detail' : null,
-  )
+  const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
+  const [selectedRalli, setSelectedRalli] = useState<Dare | null>(null)
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0)
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
   const { status: walletStatus, account } = useWallet()
   const finishSplash = useCallback(() => setShowSplash(false), [])
+  const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
 
   useEffect(() => {
     const openSearch = (event: KeyboardEvent) => {
@@ -52,18 +53,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', openSearch)
   }, [])
 
-  function selectSearchResult(id: SearchResultId) {
+  useEffect(() => {
+    const ralliId = new URLSearchParams(window.location.search).get('ralli')
+    if (!ralliId) return
+    void fetchRalliById(ralliId).then((ralli) => {
+      setSelectedRalli(ralli)
+      setActiveFlow('detail')
+    }).catch(() => undefined)
+  }, [])
+
+  function openRalli(ralli: Dare, flow: 'detail' | 'join' = 'detail') {
+    setSelectedRalli(ralli)
+    setActiveFlow(flow)
+    const url = new URL(window.location.href)
+    url.searchParams.set('ralli', ralli.id)
+    window.history.replaceState({}, '', url)
+  }
+
+  function closeRalliFlow() {
+    setActiveFlow(null)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('ralli')
+    window.history.replaceState({}, '', url)
+  }
+
+  function selectSearchResult(ralli: Dare) {
     setSearchOpen(false)
-    if (id === 'cities') {
-      setActiveFlow('community')
-      return
-    }
-    if (id === 'chains') {
-      setActiveFlow(null)
-      setActiveNav('Chains')
-      return
-    }
-    setActiveFlow('detail')
+    openRalli(ralli)
   }
 
   return (
@@ -114,39 +130,15 @@ export default function App() {
           </a>
           <div className="header-actions">
             <button className="icon-button" type="button" aria-label="Search" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /></button>
-            <button className="icon-button has-notification" type="button" aria-label="Notifications"><Bell aria-hidden="true" /></button>
+            <button className="icon-button" type="button" aria-label="Open activity" onClick={() => setActiveNav('Activity')}><Bell aria-hidden="true" /></button>
             <button className={`icon-button wallet-trigger ${walletStatus === 'connected' ? 'is-connected' : ''}`} type="button" aria-label="Open Nimiq wallet" onClick={() => setWalletOpen(true)}><WalletCards aria-hidden="true" /></button>
           </div>
         </header>
 
         {activeNav === 'Discover' && (<>
         <section className="welcome-row" aria-labelledby="discover-heading">
-          <div><p className="eyebrow">Monday, August 31</p><h1 id="discover-heading">What will you do today?</h1></div>
+          <div><p className="eyebrow">{today}</p><h1 id="discover-heading">What will you do today?</h1></div>
           <button className="desktop-search" type="button" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /><span>Search Rallis</span><kbd>⌘ K</kbd></button>
-        </section>
-
-        <section className="daily-ralli" aria-labelledby="daily-heading">
-          <div className="daily-ralli__glow" aria-hidden="true" />
-          <div className="daily-ralli__content">
-            <div className="daily-ralli__pills">
-              <span className="pill pill--dark"><Sparkles aria-hidden="true" />Daily Ralli</span>
-              <span className="pill pill--funded"><Zap aria-hidden="true" />50 NIM pool</span>
-            </div>
-            <div>
-              <p className="daily-ralli__kicker">Everyone gets the same prompt</p>
-              <h2 id="daily-heading">Make something ordinary look dramatic.</h2>
-            </div>
-            <div className="daily-ralli__footer">
-              <div className="participant-stack" aria-label="1,284 people joined">
-                <span className="avatar avatar--one">VK</span><span className="avatar avatar--two">SA</span>
-                <span className="avatar avatar--three">JM</span><strong>+1.2k joined</strong>
-              </div>
-              <button className="button button--ink" type="button" onClick={() => setActiveFlow('join')}>Join today’s Ralli<ChevronRight aria-hidden="true" /></button>
-            </div>
-          </div>
-          <div className="daily-ralli__art" aria-hidden="true">
-            <span className="shape shape--sun" /><span className="shape shape--arch" /><span className="shape shape--spark">✦</span>
-          </div>
         </section>
 
         <section className="economy-loop" aria-labelledby="economy-heading">
@@ -162,13 +154,8 @@ export default function App() {
 
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
-          <div className="feed-tabs" role="tablist" aria-label="Discover feed">
-            <button className="is-active" type="button" role="tab" aria-selected="true">For you</button>
-            <button type="button" role="tab" aria-selected="false">Trending</button>
-            <button type="button" role="tab" aria-selected="false">New</button>
-          </div>
         </div>
-        <DareFeed onOpen={() => setActiveFlow('detail')} onJoin={() => setActiveFlow('join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} />
+        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} refreshKey={feedRefreshKey} />
         </>)}
         {activeNav === 'Activity' && <Activity />}
         {activeNav === 'Chains' && <RalliChain />}
@@ -177,57 +164,39 @@ export default function App() {
 
       {activeNav === 'Discover' && (
       <aside className="right-rail" aria-label="Community highlights">
-        <div className="rail-card streak-card">
-          <span className="rail-icon rail-icon--lime"><Flame aria-hidden="true" /></span>
-          <div><strong>12 day streak</strong><p>You’re on fire. Join one today to keep it going.</p></div>
-          <div className="week-row" aria-label="Participation this week">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
-              <span className={index < 5 ? 'is-done' : ''} key={`${day}-${index}`}>{day}</span>
-            ))}
+        <div className="rail-card">
+          <div className="rail-card__heading">
+            <div><p className="eyebrow">Start the next one</p><h3>Give people something worth doing.</h3></div>
+            <span className="rail-icon rail-icon--violet"><Sparkles aria-hidden="true" /></span>
           </div>
+          <p>Create a challenge, optionally fund it with NIM, then pass it into the community.</p>
+          <button className="text-button" type="button" onClick={() => setActiveFlow('create')}>Start a Ralli <ChevronRight aria-hidden="true" /></button>
         </div>
         <div className="rail-card">
           <div className="rail-card__heading">
-            <div><p className="eyebrow">Community goal</p><h3>100 cities in 24 hours</h3></div>
-            <span className="rail-icon rail-icon--violet"><UsersRound aria-hidden="true" /></span>
+            <div><p className="eyebrow">Nimiq economy</p><h3>Reward participation.</h3></div>
+            <span className="rail-icon rail-icon--lime"><HandCoins aria-hidden="true" /></span>
           </div>
-          <p>Show us one thing that makes your city yours.</p>
-          <div className="progress-label"><span>73 cities reached</span><strong>73%</strong></div>
-          <div className="progress-track"><span /></div>
-          <button className="text-button" type="button" onClick={() => setActiveFlow('community')}>View community Ralli <ChevronRight aria-hidden="true" /></button>
-        </div>
-        <div className="rail-card mini-leaderboard">
-          <div className="rail-card__heading">
-            <div><p className="eyebrow">This week</p><h3>Crowd favourites</h3></div>
-            <span className="rail-icon"><Trophy aria-hidden="true" /></span>
-          </div>
-          {[
-            ['1', 'Maya K.', '2.4k reactions'], ['2', 'Jo N.', '1.8k reactions'], ['3', 'Kofi A.', '1.3k reactions'],
-          ].map(([rank, name, reactions]) => (
-            <div className="leader-row" key={rank}>
-              <span className="rank">{rank}</span><span className={`avatar avatar--leader avatar--leader-${rank}`}>{name.slice(0, 1)}</span>
-              <span><strong>{name}</strong><small>{reactions}</small></span><Heart aria-hidden="true" />
-            </div>
-          ))}
+          <p>Boost a Ralli you want to see happen, or tip a response that deserves it.</p>
         </div>
       </aside>
       )}
 
-      {activeFlow === 'detail' && (
-        <RalliDetail onClose={() => setActiveFlow(null)} onJoin={() => setActiveFlow('join')} />
+      {activeFlow === 'detail' && selectedRalli && (
+        <RalliDetail ralli={selectedRalli} onClose={closeRalliFlow} onJoin={() => setActiveFlow('join')} />
       )}
-      {activeFlow === 'join' && (
-        <JoinRalli onBack={() => setActiveFlow('detail')} onClose={() => setActiveFlow(null)} />
+      {activeFlow === 'join' && selectedRalli && (
+        <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
       )}
       {activeFlow === 'create' && (
-        <CreateRalli onClose={() => setActiveFlow(null)} />
-      )}
-      {activeFlow === 'community' && (
-        <CommunityRalli onClose={() => setActiveFlow(null)} />
+        <CreateRalli onClose={() => setActiveFlow(null)} onCreated={(id) => {
+          setFeedRefreshKey((value) => value + 1)
+          void fetchRalliById(id).then(setSelectedRalli)
+        }} />
       )}
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
-      {boostTarget && <Boost creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
+      {boostTarget && <Boost ralliId={boostTarget.id} creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {navItems.map((item) => {

@@ -5,13 +5,14 @@ import type { Dare } from '../features/discover/DareCard.tsx'
 
 export type FeedStatus = 'loading' | 'success' | 'empty' | 'error' | 'demo'
 
-export function useRalliFeed(demoRallis: Dare[]) {
+export function useRalliFeed(demoRallis: Dare[], refreshKey = 0) {
   const backend = useBackend()
   const [rallis, setRallis] = useState<Dare[]>(backend.status === 'demo' ? demoRallis : [])
   const [status, setStatus] = useState<FeedStatus>(backend.status === 'demo' ? 'demo' : 'loading')
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    void refreshKey
     if (backend.status === 'demo') {
       setRallis(demoRallis)
       setStatus('demo')
@@ -30,7 +31,7 @@ export function useRalliFeed(demoRallis: Dare[]) {
       setError(failure instanceof Error ? failure.message : 'The Ralli feed could not be loaded.')
       setStatus('error')
     }
-  }, [backend.status, demoRallis])
+  }, [backend.status, demoRallis, refreshKey])
 
   useEffect(() => {
     void Promise.resolve().then(load)

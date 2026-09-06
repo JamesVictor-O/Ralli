@@ -1,72 +1,67 @@
-import { useState } from 'react'
-import { Bell, ChevronRight, Heart, MessageCircle, Repeat2, Sparkles, UserPlus, Zap } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { AlertCircle, Bell, Heart, LoaderCircle, MessageCircle, Repeat2, Sparkles, Zap } from 'lucide-react'
+import { requireSupabase } from '../../lib/supabase.ts'
+import { useBackend } from '../../store/backend.ts'
+import type { Database } from '../../types/database.ts'
 
 type Filter = 'All' | 'Social' | 'NIM'
+type ActivityRow = Database['public']['Tables']['activity_events']['Row']
 
-const events = [
-  { id: 1, group: 'Today', kind: 'Social', icon: Heart, tone: 'coral', title: 'Maya loved your response', body: '“The most dramatic cup of coffee”', time: '4m', unread: true },
-  { id: 2, group: 'Today', kind: 'Social', icon: Repeat2, tone: 'violet', title: 'Kofi passed your Ralli to Ada', body: 'Your chain just reached 8 people.', time: '18m', unread: true },
-  { id: 3, group: 'Today', kind: 'NIM', icon: Zap, tone: 'lime', title: 'You received a 2 NIM tip', body: 'From Jo for your sky response.', time: '1h', unread: true },
-  { id: 4, group: 'Earlier', kind: 'Social', icon: UserPlus, tone: 'blue', title: 'Amara invited you to a Ralli', body: 'Recreate your oldest photo today.', time: '3h', unread: false },
-  { id: 5, group: 'Earlier', kind: 'NIM', icon: Sparkles, tone: 'violet', title: 'A reward pool reached 24 NIM', body: 'The sky Ralli is picking up momentum.', time: 'Yesterday', unread: false },
-  { id: 6, group: 'Earlier', kind: 'Social', icon: MessageCircle, tone: 'coral', title: 'Three new reactions', body: 'People are responding to your desk photo.', time: 'Yesterday', unread: false },
-] as const
+const presentation = {
+  reaction: { icon: Heart, tone: 'coral', title: 'Someone reacted to your response', kind: 'Social' },
+  pass: { icon: Repeat2, tone: 'violet', title: 'Someone passed your Ralli on', kind: 'Social' },
+  response: { icon: MessageCircle, tone: 'blue', title: 'Someone joined your Ralli', kind: 'Social' },
+  tip: { icon: Zap, tone: 'lime', title: 'You received a NIM tip', kind: 'NIM' },
+  boost: { icon: Sparkles, tone: 'violet', title: 'Someone boosted your reward pool', kind: 'NIM' },
+} as const
+
+function relativeTime(value: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000))
+  if (minutes < 1) return 'now'
+  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1_440) return `${Math.floor(minutes / 60)}h`
+  return `${Math.floor(minutes / 1_440)}d`
+}
 
 export function Activity() {
   const [filter, setFilter] = useState<Filter>('All')
-  const [readAll, setReadAll] = useState(false)
-  const visibleEvents = events.filter((event) => filter === 'All' || event.kind === filter)
+  const [events, setEvents] = useState<ActivityRow[]>([])
+  const [status, setStatus] = useState<'loading' | 'success' | 'empty' | 'error'>('loading')
+  const { user } = useBackend()
 
-  return (
-    <section className="page-view" aria-labelledby="activity-title">
-      <header className="page-heading">
-        <div><p className="eyebrow">Stay in the loop</p><h1 id="activity-title">Activity</h1></div>
-        <button className="text-action" type="button" onClick={() => setReadAll(true)}>Mark all as read</button>
-      </header>
+  const load = useCallback(async () => {
+    if (!user) return
+    setStatus('loading')
+    const { data, error } = await requireSupabase().from('activity_events').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
+    if (error) return setStatus('error')
+    setEvents(data ?? [])
+    setStatus(data?.length ? 'success' : 'empty')
+  }, [user])
 
-      <div className="page-tabs" role="tablist" aria-label="Activity filters">
-        {(['All', 'Social', 'NIM'] as Filter[]).map((item) => (
-          <button className={filter === item ? 'is-active' : ''} type="button" role="tab"
-            aria-selected={filter === item} key={item} onClick={() => setFilter(item)}>{item}</button>
-        ))}
-      </div>
+  useEffect(() => { void Promise.resolve().then(load) }, [load])
 
-      {visibleEvents.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-state__icon"><Bell aria-hidden="true" /></span>
-          <h2>All caught up</h2>
-          <p>Join a Ralli and the good stuff will show up here.</p>
-          <button className="button button--ink" type="button">Find a Ralli</button>
-        </div>
-      ) : (
-        <div className="activity-list">
-          {['Today', 'Earlier'].map((group) => {
-            const groupedEvents = visibleEvents.filter((event) => event.group === group)
-            if (!groupedEvents.length) return null
-            return (
-              <section className="activity-group" aria-labelledby={`activity-${group.toLowerCase()}`} key={group}>
-                <h2 id={`activity-${group.toLowerCase()}`}>{group}</h2>
-                <div className="activity-card">
-                  {groupedEvents.map((event) => {
-                    const Icon = event.icon
-                    return (
-                      <button className="activity-row" type="button" key={event.id}>
-                        <span className={`event-icon event-icon--${event.tone}`}><Icon aria-hidden="true" /></span>
-                        <span className="activity-row__copy">
-                          <strong>{event.title}</strong><small>{event.body}</small>
-                        </span>
-                        <span className="activity-row__time">{event.time}</span>
-                        {event.unread && !readAll && <span className="unread-dot"><span className="sr-only">Unread</span></span>}
-                        <ChevronRight aria-hidden="true" />
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            )
-          })}
-        </div>
-      )}
-    </section>
-  )
+  async function markAllRead() {
+    if (!user) return
+    const now = new Date().toISOString()
+    const { error } = await requireSupabase().from('activity_events').update({ read_at: now }).eq('user_id', user.id).is('read_at', null)
+    if (!error) setEvents((current) => current.map((event) => ({ ...event, read_at: event.read_at ?? now })))
+  }
+
+  const visibleEvents = events.filter((event) => {
+    const item = presentation[event.kind as keyof typeof presentation]
+    return filter === 'All' || item?.kind === filter
+  })
+
+  return <section className="page-view" aria-labelledby="activity-title">
+    <header className="page-heading"><div><p className="eyebrow">Stay in the loop</p><h1 id="activity-title">Activity</h1></div><button className="text-action" type="button" disabled={!events.some((event) => !event.read_at)} onClick={() => void markAllRead()}>Mark all as read</button></header>
+    <div className="page-tabs" role="tablist" aria-label="Activity filters">{(['All', 'Social', 'NIM'] as Filter[]).map((item) => <button className={filter === item ? 'is-active' : ''} type="button" role="tab" aria-selected={filter === item} key={item} onClick={() => setFilter(item)}>{item}</button>)}</div>
+    {status === 'loading' && <div className="empty-state" aria-busy="true"><span className="empty-state__icon"><LoaderCircle className="spin" aria-hidden="true" /></span><h2>Loading activity…</h2></div>}
+    {status === 'error' && <div className="empty-state" role="alert"><span className="empty-state__icon"><AlertCircle aria-hidden="true" /></span><h2>Activity didn’t load</h2><button className="button button--ink" type="button" onClick={() => void load()}>Try again</button></div>}
+    {(status === 'empty' || (status === 'success' && !visibleEvents.length)) && <div className="empty-state"><span className="empty-state__icon"><Bell aria-hidden="true" /></span><h2>All caught up</h2><p>Your reactions, passes, tips, and boosts will appear here.</p></div>}
+    {status === 'success' && visibleEvents.length > 0 && <div className="activity-list"><section className="activity-group" aria-labelledby="activity-recent"><h2 id="activity-recent">Recent</h2><div className="activity-card">{visibleEvents.map((event) => {
+      const item = presentation[event.kind as keyof typeof presentation] ?? presentation.response
+      const Icon = item.icon
+      return <article className="activity-row" key={event.id}><span className={`event-icon event-icon--${item.tone}`}><Icon aria-hidden="true" /></span><span className="activity-row__copy"><strong>{item.title}</strong><small>{relativeTime(event.created_at)} ago</small></span>{!event.read_at && <span className="unread-dot"><span className="sr-only">Unread</span></span>}</article>
+    })}</div></section></div>}
+  </section>
 }

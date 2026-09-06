@@ -370,9 +370,10 @@ Ralli includes a Vercel configuration for its Vite production build.
 
 1. Import the repository into Vercel.
 2. Keep the detected framework as **Vite**.
-3. Add `VITE_RALLI_CREATOR_ADDRESS` in the project environment variables to enable live Boost payments.
-4. Add the other values from `.env.example` when their corresponding integrations are enabled.
-5. Deploy.
+3. Add `VITE_RALLI_REWARD_ADDRESS` in the project environment variables and the matching `RALLI_REWARD_ADDRESS` Supabase Edge Function secret to enable reward and Boost custody payments.
+4. Ralli automatically uses the injected Mini App SDK inside Nimiq Pay and Nimiq Hub in a regular browser. Set `VITE_NIMIQ_HUB_URL=https://hub.nimiq-testnet.com` for testnet browser testing; omit it or use `https://hub.nimiq.com` for mainnet.
+5. Add the other values from `.env.example` when their corresponding integrations are enabled.
+6. Deploy.
 
 The production build uses Node.js 22 or later and outputs to `dist`.
 

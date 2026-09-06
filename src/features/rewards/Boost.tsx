@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { Check, LoaderCircle, ShieldCheck, X, Zap } from 'lucide-react'
 import { useWallet } from '../../store/wallet.ts'
-import { sendNimPayment } from '../../nimiq/payments.ts'
+import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
+import { recordPaymentSubmission } from '../../lib/payments.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
 
@@ -13,17 +14,18 @@ function paymentError(error: unknown) {
 
 interface BoostProps {
   onClose: () => void
+  ralliId: string
   creator?: string
   ralli?: string
   pool?: number
 }
 
-export function Boost({ onClose, creator = 'Nia', ralli = 'weirdest desk item', pool = 12 }: BoostProps) {
+export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'this Ralli', pool = 0 }: BoostProps) {
   const { status, connect } = useWallet()
   const [amount, setAmount] = useState('2')
   const [state, setState] = useState<'idle' | 'submitting' | 'success'>('idle')
   const [error, setError] = useState('')
-  const recipient = import.meta.env.VITE_RALLI_CREATOR_ADDRESS as string | undefined
+  const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && onClose()
@@ -36,7 +38,8 @@ export function Boost({ onClose, creator = 'Nia', ralli = 'weirdest desk item', 
     setError('')
     setState('submitting')
     try {
-      await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli boost: ${ralli}` })
+      const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli boost: ${ralliId}` })
+      await recordPaymentSubmission({ kind: 'boost', ralliId, amountLuna: nimToLuna(amount), transactionHash })
       setState('success')
     } catch (paymentFailure) {
       setError(paymentError(paymentFailure))
@@ -55,7 +58,7 @@ export function Boost({ onClose, creator = 'Nia', ralli = 'weirdest desk item', 
         {state === 'success' ? (
           <div className="payment-success" aria-live="polite">
             <span><Check aria-hidden="true" /></span><h3>Boost sent</h3>
-            <p>Your {amount} NIM was added to the Ralli. The crowd wants to see this.</p>
+            <p>Your {amount} NIM transaction was submitted and its receipt is recorded for confirmation.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : status !== 'connected' ? (
@@ -72,14 +75,14 @@ export function Boost({ onClose, creator = 'Nia', ralli = 'weirdest desk item', 
           <div className="wallet-state" role="alert">
             <span className="wallet-state__icon wallet-state__icon--coral"><Zap aria-hidden="true" /></span>
             <h3>Boosts need a recipient</h3>
-            <p>Add the creator’s public Nimiq address to <code>VITE_RALLI_CREATOR_ADDRESS</code> before accepting payments.</p>
+            <p>Configure <code>VITE_RALLI_REWARD_ADDRESS</code> with the dedicated reward-pool custody address before accepting boosts.</p>
             <button className="button button--soft" type="button" onClick={onClose}>Close</button>
           </div>
         ) : (
           <form className="payment-form" onSubmit={submit}>
             <div className="payment-recipient">
               <span className="avatar avatar--author avatar--coral">{creator.slice(0, 2).toUpperCase()}</span>
-              <span><small>Boosting {creator}’s Ralli</small><strong>Reward pool · {pool} NIM</strong></span>
+              <span><small>{creator} · {ralli}</small><strong>Reward pool · {pool} NIM</strong></span>
             </div>
             <fieldset className="amount-picker">
               <legend>Choose an amount</legend>

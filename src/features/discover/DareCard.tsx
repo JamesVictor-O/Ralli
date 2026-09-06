@@ -1,17 +1,15 @@
-import { type KeyboardEvent, type MouseEvent, useState } from 'react'
+import { type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, Heart, Repeat2, UsersRound } from 'lucide-react'
-import { ResponsePreview } from './ResponsePreview.tsx'
 import { RewardPool } from '../rewards/RewardPool.tsx'
 
 export interface Dare {
   id: string; author: string; initials: string; time: string; prompt: string; category: string
   participants: number; reactions: number; passes: number; reward: number; starterReward: number; boosts: number; image: string; imageAlt: string
   tone: 'coral' | 'violet'
+  description?: string; endsAt?: string; creatorId?: string
 }
 
 export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen: () => void; onJoin: () => void; onBoost: () => void }) {
-  const [liked, setLiked] = useState(false)
-
   function isInteractiveTarget(target: EventTarget | null) {
     return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select, [role="button"]'))
   }
@@ -45,23 +43,12 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
         <div className="media-badge"><UsersRound aria-hidden="true" /><span><strong>{dare.participants}</strong> responses</span></div>
       </div>
       <div className="dare-card__meta">
-        <button className={`reaction-button ${liked ? 'is-liked' : ''}`} type="button" aria-pressed={liked} onClick={() => setLiked((value) => !value)}>
-          <Heart aria-hidden="true" fill={liked ? 'currentColor' : 'none'} /><span>{dare.reactions + (liked ? 1 : 0)}</span>
-        </button>
+        <span className="reaction-button" aria-label={`${dare.reactions} response reactions`}>
+          <Heart aria-hidden="true" /><span>{dare.reactions}</span>
+        </span>
         <span><Repeat2 aria-hidden="true" /> Passed {dare.passes} times</span>
         <button className="join-button" type="button" onClick={onJoin}>Join Ralli <ChevronRight aria-hidden="true" /></button>
       </div>
-      <ResponsePreview
-        author={dare.id === 'desk' ? 'Victor K.' : 'Lea M.'}
-        initials={dare.id === 'desk' ? 'VK' : 'LM'}
-        copy={dare.id === 'desk' ? 'A ceramic frog holding my emergency paper clips. His name is Gerald.' : 'The sky went full movie poster for five minutes.'}
-        image={dare.id === 'desk'
-          ? 'https://images.unsplash.com/photo-1523726491678-bf852e717f6a?auto=format&fit=crop&w=500&q=80'
-          : 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=500&q=80'}
-        imageAlt={dare.id === 'desk' ? 'Colourful objects on a creative desk' : 'A person beneath a dramatic evening sky'}
-        reactions={dare.id === 'desk' ? 86 : 121}
-        onOpen={onOpen}
-      />
     </article>
   )
 }
