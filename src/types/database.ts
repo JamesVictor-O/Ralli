@@ -66,6 +66,7 @@ export type RalliFeedRow = {
   response_count: number | null
   reaction_count: number | null
   pass_count: number | null
+  boost_count: number | null
 }
 
 export interface Database {

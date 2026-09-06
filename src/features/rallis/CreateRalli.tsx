@@ -7,6 +7,8 @@ import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { recordPaymentSubmission } from '../../lib/payments.ts'
 
+const kickstartPresets = ['0', '5', '10', '25']
+
 export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCreated?: (id: string) => void }) {
   const [step, setStep] = useState<'form' | 'success'>('form')
   const [prompt, setPrompt] = useState('')
@@ -142,14 +144,14 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
           <span className="success-burst success-burst--violet" aria-hidden="true"><Check /></span>
           <p className="eyebrow">Your Ralli is live</p>
           <h1 id="created-title">Now pass it on.</h1>
-          <p>{fundingState === 'funded' ? `${reward} NIM was submitted to the reward pool.` : 'Invite someone first or let the community discover it naturally.'}</p>
-          {fundingWarning && <p className="payment-error" role="alert"><strong>Reward needs attention.</strong> {fundingWarning}</p>}
+          <p>{fundingState === 'funded' ? `${reward} NIM was submitted to kickstart the pool.` : 'The pool starts at 0 — invite people, and the crowd can boost it from here.'}</p>
+          {fundingWarning && <p className="payment-error" role="alert"><strong>Kickstart needs attention.</strong> {fundingWarning}</p>}
           <div className="success-actions">
             {reward && Number(reward) > 0 && fundingState !== 'funded' && (
               <button className="button button--soft button--wide" type="button" disabled={fundingState === 'submitting'}
                 aria-busy={fundingState === 'submitting'} onClick={() => void fundCreatedRalli()}>
                 {fundingState === 'submitting' && <LoaderCircle className="spin" aria-hidden="true" />}
-                {fundingState === 'submitting' ? 'Waiting for approval…' : `Fund with ${reward} NIM`}
+                {fundingState === 'submitting' ? 'Waiting for approval…' : `Kickstart with ${reward} NIM`}
               </button>
             )}
             <button className="button button--ink button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>
@@ -212,21 +214,34 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
             </label>
           </fieldset>
 
-          <div className="form-grid">
-            <div className="field">
-              <label htmlFor="duration">Duration</label>
-              <div className="input-with-icon"><Clock3 aria-hidden="true" /><select id="duration" value={duration} onChange={(event) => setDuration(event.target.value)}><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></div>
-            </div>
-            <div className="field">
-              <label htmlFor="reward">Reward <span>Optional</span></label>
-              <div className="input-with-icon"><Zap aria-hidden="true" /><input id="reward" type="text" inputMode="decimal" autoComplete="off" placeholder="0" value={reward} onChange={(event) => setReward(event.target.value.replace(/[^0-9.]/g, ''))} /><strong>NIM</strong></div>
+          <div className="field">
+            <label htmlFor="duration">Duration</label>
+            <div className="input-with-icon"><Clock3 aria-hidden="true" /><select id="duration" value={duration} onChange={(event) => setDuration(event.target.value)}><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></div>
+          </div>
+
+          <div className="field">
+            <label>Kickstart with NIM <span>Optional</span></label>
+            <fieldset className="amount-picker">
+              <legend>The pool can also grow from boosts once people see it — this isn’t required.</legend>
+              {kickstartPresets.map((value) => (
+                <button className={reward === value ? 'is-active' : ''} type="button" key={value}
+                  onClick={() => setReward(value)}>
+                  {value === '0' ? 'No thanks' : `${value} NIM`}
+                </button>
+              ))}
+            </fieldset>
+            <div className="input-with-icon">
+              <Zap aria-hidden="true" />
+              <input type="text" inputMode="decimal" autoComplete="off" placeholder="Custom amount" aria-label="Custom kickstart amount"
+                value={reward === '0' ? '' : reward} onChange={(event) => setReward(event.target.value.replace(/[^0-9.]/g, ''))} />
+              <strong>NIM</strong>
             </div>
           </div>
 
           {reward && Number(reward) > 0 && (
             <div className="wallet-note">
               <Lock aria-hidden="true" />
-              <p><strong>You’ll approve this separately.</strong><span>Nimiq Pay will ask you to confirm the {reward} NIM reward after the Ralli is created.</span></p>
+              <p><strong>You’ll approve this separately.</strong><span>Nimiq Pay will ask you to confirm the {reward} NIM kickstart after the Ralli is created.</span></p>
             </div>
           )}
 

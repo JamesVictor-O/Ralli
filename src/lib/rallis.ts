@@ -34,6 +34,8 @@ function toNim(luna: number | null) {
 
 export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
   const author = row.display_name || row.handle || 'Ralli creator'
+  const starterReward = toNim(row.creator_reward_luna)
+  const boosts = toNim(row.boost_total_luna)
   return {
     id: row.id ?? `ralli-${index}`,
     author,
@@ -44,9 +46,12 @@ export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
     participants: row.response_count ?? 0,
     reactions: row.reaction_count ?? 0,
     passes: row.pass_count ?? 0,
-    reward: toNim(row.reward_total_luna),
-    starterReward: toNim(row.creator_reward_luna),
-    boosts: toNim(row.boost_total_luna),
+    // The crowdfunded total is what's actually behind a Ralli — rallis.reward_total_luna
+    // stays 0 forever by design (see the "Verified users create unfunded Rallis" policy).
+    reward: starterReward + boosts,
+    starterReward,
+    boosts,
+    boostCount: row.boost_count ?? 0,
     image: mediaUrl(row.cover_path, index),
     imageAlt: row.prompt ? `Cover for ${row.prompt}` : 'Ralli cover',
     tone: index % 2 === 0 ? 'coral' : 'violet',

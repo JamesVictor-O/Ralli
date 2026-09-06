@@ -1086,8 +1086,23 @@ h3 { margin-bottom: 0; font-size: 19px; line-height: 1.25; letter-spacing: -.3px
 .response-post > footer > button { min-height: 40px; border: 0; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 11px; background: transparent; color: var(--ink-soft); font-size: 10px; font-weight: 700; }
 .response-post > footer > button:last-child { width: 40px; margin-left: auto; justify-content: center; }
 .response-post > footer > button svg { width: 16px; }
-.response-post > footer > .tip-response { background: var(--lime-soft); color: var(--ink); }
-.tip-response strong { padding-left: 3px; font-size: 9px; }
+.tip-chip { position: relative; display: inline-flex; align-items: stretch; }
+.tip-chip__send { min-height: 38px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; border: 1px solid var(--line); border-right: 0; border-radius: 12px 0 0 12px; background: var(--lime-soft); color: var(--ink); font-size: 10px; font-weight: 800; }
+.tip-chip__send svg { width: 15px; }
+.tip-chip__send:disabled { background: var(--surface-soft); color: var(--ink-soft); }
+.tip-chip__caret { min-width: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 0 12px 12px 0; background: var(--lime-soft); color: var(--ink); }
+.tip-chip__caret svg { width: 12px; }
+.tip-chip.is-open .tip-chip__caret { background: var(--lime); }
+.tip-chip__picker { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 5; display: flex; align-items: center; gap: 5px; padding: 7px; border-radius: 13px; background: var(--surface); box-shadow: var(--shadow); white-space: nowrap; }
+.tip-chip__option { min-width: 38px; min-height: 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 11px; font-weight: 750; }
+.tip-chip__option:hover { background: var(--lime-soft); }
+.tip-chip__custom { display: flex; align-items: center; gap: 5px; }
+.tip-chip__custom input { width: 56px; min-height: 34px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; font-size: 11px; }
+.tip-chip__custom button { min-height: 34px; padding: 0 9px; border: 0; border-radius: 10px; background: var(--ink); color: var(--surface); font-size: 11px; font-weight: 750; }
+.tip-chip__error { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; padding: 4px 8px; border-radius: 8px; background: color-mix(in srgb, var(--coral) 22%, var(--surface)); color: #7e231c; font-size: 9px; white-space: nowrap; }
+
+.nim-pool-chip { min-height: 38px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 12px; background: var(--lime-soft); color: var(--ink); font-size: 12px; font-weight: 800; }
+.nim-pool-chip svg { width: 15px; }
 
 .format-picker, .choice-group {
   min-width: 0;

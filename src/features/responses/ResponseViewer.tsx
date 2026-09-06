@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertCircle, HandCoins, LoaderCircle, MoreHorizontal, Repeat2, Share2, Sparkles } from 'lucide-react'
+import { AlertCircle, LoaderCircle, MoreHorizontal, Repeat2, Share2, Sparkles } from 'lucide-react'
 import { Reactions } from './Reactions.tsx'
+import { TipChip } from './TipChip.tsx'
 import { PassItOn } from '../chains/PassItOn.tsx'
-import { Tip } from '../rewards/Tip.tsx'
 import { fetchResponses, type RalliResponse } from '../../lib/responses.ts'
 import { useBackend } from '../../store/backend.ts'
 
@@ -19,7 +19,6 @@ function relativeTime(value: string) {
 export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: string }) {
   const [sort, setSort] = useState<Sort>('Popular')
   const [passResponse, setPassResponse] = useState<RalliResponse | null>(null)
-  const [tipResponse, setTipResponse] = useState<RalliResponse | null>(null)
   const [responses, setResponses] = useState<RalliResponse[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'empty' | 'error'>('loading')
   const [error, setError] = useState('')
@@ -64,14 +63,13 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
           {!response.mediaUrl && <div className="text-response"><span>“</span><p>{response.copy}</p></div>}
           <footer>
             <Reactions responseId={response.id} initialCount={response.reactions} initialSelected={response.selectedReaction} />
-            <button className="tip-response" type="button" onClick={() => setTipResponse(response)}><HandCoins aria-hidden="true" /><span>Tip</span><strong>{response.tips} NIM</strong></button>
+            <TipChip responseId={response.id} recipientAddress={response.authorAddress} author={response.author} initialTotal={response.tips} />
             <button type="button" onClick={() => setPassResponse(response)}><Repeat2 aria-hidden="true" /><span>Pass it on</span></button>
             <button type="button" aria-label="Share response" onClick={() => void navigator.share?.({ title: prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralliId}` })}><Share2 aria-hidden="true" /></button>
           </footer>
         </article>)}
       </div>}
       {passResponse && <PassItOn ralliId={ralliId} responseId={passResponse.id} prompt={prompt} responseAuthor={passResponse.author} onClose={() => setPassResponse(null)} />}
-      {tipResponse && <Tip responseId={tipResponse.id} recipientAddress={tipResponse.authorAddress} author={tipResponse.author} onClose={() => setTipResponse(null)} />}
     </section>
   )
 }
