@@ -1,7 +1,8 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import HubApi from '@nimiq/hub-api'
 import { requireSupabase } from '../lib/supabase.ts'
 import { getNimiqClient } from './client.ts'
-import { bytesToHex, getNimiqHub, isNimiqPayContext } from './hub.ts'
+import { bytesToHex, getNimiqHub, isMobileHubClient, isNimiqPayContext } from './hub.ts'
 import { isNimiqError } from './types.ts'
 
 type ChallengeResponse = { challengeId: string; message: string; expiresAt: string }
@@ -17,44 +18,26 @@ async function functionError(error: unknown, fallback: string) {
   return error instanceof Error ? error : new Error(fallback)
 }
 
-export async function verifyConnectedNimiqAddress(address: string) {
-  const database = requireSupabase()
-  const challengeRequest = database.functions.invoke<ChallengeResponse>('wallet-challenge', {
+async function requestChallenge(address: string) {
+  const { data, error } = await requireSupabase().functions.invoke<ChallengeResponse>('wallet-challenge', {
     body: { address },
   })
-  const challengePromise = challengeRequest.then(async ({ data, error }) => {
-    if (error || !data) throw await functionError(error, 'Could not start wallet verification.')
-    return data
-  })
+  if (error || !data) throw await functionError(error, 'Could not start wallet verification.')
+  return data
+}
 
-  let challenge: ChallengeResponse
-  let publicKey: string
-  let signature: string
-  let signatureMode: 'raw' | 'hub'
-  if (isNimiqPayContext()) {
-    challenge = await challengePromise
-    const client = await getNimiqClient()
-    const proof = await client.sign(challenge.message)
-    if (isNimiqError(proof)) throw new Error(proof.error.message)
-    publicKey = proof.publicKey
-    signature = proof.signature
-    signatureMode = 'raw'
-  } else {
-    const signed = await getNimiqHub().signMessage(challengePromise.then(({ message }) => ({ appName: 'Ralli', message, signer: address })))
-    challenge = await challengePromise
-    publicKey = bytesToHex(signed.signerPublicKey)
-    signature = bytesToHex(signed.signature)
-    signatureMode = 'hub'
-  }
+export interface SignatureProof {
+  challengeId: string
+  publicKey: string
+  signature: string
+  signatureMode: 'raw' | 'hub'
+}
 
-  const { data, error } = await database.functions.invoke<VerificationResponse>('wallet-verify', {
-    body: {
-      challengeId: challenge.challengeId,
-      publicKey,
-      signature,
-      signatureMode,
-    },
-  })
+// Finishes verification once a signature has been produced — shared by the direct
+// (popup/Nimiq Pay) path and the mobile redirect-return handler in AppProviders.
+export async function completeVerification(proof: SignatureProof) {
+  const database = requireSupabase()
+  const { data, error } = await database.functions.invoke<VerificationResponse>('wallet-verify', { body: proof })
   if (error || !data) throw await functionError(error, 'The wallet signature could not be verified.')
 
   if ('relogin' in data && data.relogin) {
@@ -70,4 +53,37 @@ export async function verifyConnectedNimiqAddress(address: string) {
   }
 
   return data
+}
+
+export async function verifyConnectedNimiqAddress(address: string) {
+  const challengePromise = requestChallenge(address)
+
+  if (isNimiqPayContext()) {
+    const challenge = await challengePromise
+    const client = await getNimiqClient()
+    const proof = await client.sign(challenge.message)
+    if (isNimiqError(proof)) throw new Error(proof.error.message)
+    return completeVerification({ challengeId: challenge.challengeId, publicKey: proof.publicKey, signature: proof.signature, signatureMode: 'raw' })
+  }
+
+  if (isMobileHubClient()) {
+    // Popup-based signing breaks on mobile the same way wallet connect does (see
+    // isMobileHubClient). Redirect instead — the signature comes back to the
+    // SIGN_MESSAGE handler registered in AppProviders, which finishes verification.
+    const challenge = await challengePromise
+    await getNimiqHub().signMessage<typeof HubApi.BehaviorType.REDIRECT>(
+      { appName: 'Ralli', message: challenge.message, signer: address },
+      new HubApi.RedirectRequestBehavior(window.location.href, { challengeId: challenge.challengeId }),
+    )
+    return { verified: false as const, pending: true as const }
+  }
+
+  const signed = await getNimiqHub().signMessage(challengePromise.then(({ message }) => ({ appName: 'Ralli', message, signer: address })))
+  const challenge = await challengePromise
+  return completeVerification({
+    challengeId: challenge.challengeId,
+    publicKey: bytesToHex(signed.signerPublicKey),
+    signature: bytesToHex(signed.signature),
+    signatureMode: 'hub',
+  })
 }

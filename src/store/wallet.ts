@@ -11,6 +11,10 @@ export interface WalletContextValue {
   connect: () => Promise<void>
   retry: () => Promise<void>
   disconnect: () => void
+  // Bumped whenever a mobile Nimiq Hub redirect finishes an address verification, so
+  // useWalletVerification knows to re-check the profile even though the component that
+  // started the verification was unmounted by the full-page redirect round trip.
+  verificationTick: number
 }
 
 export const WalletContext = createContext<WalletContextValue | null>(null)

@@ -3,7 +3,8 @@ import HubApi from '@nimiq/hub-api'
 import type { NimiqClient } from '../nimiq/types.ts'
 import { listAccounts } from '../nimiq/accounts.ts'
 import { getNimiqClient } from '../nimiq/client.ts'
-import { getNimiqHub, isMobileHubClient, isNimiqPayContext } from '../nimiq/hub.ts'
+import { bytesToHex, getNimiqHub, isMobileHubClient, isNimiqPayContext } from '../nimiq/hub.ts'
+import { completeVerification } from '../nimiq/signatures.ts'
 import { WalletContext, type WalletStatus } from '../store/wallet.ts'
 
 function friendlyError(error: unknown) {
@@ -27,6 +28,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   const [consensus, setConsensus] = useState<boolean | null>(null)
   const [blockNumber, setBlockNumber] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [verificationTick, setVerificationTick] = useState(0)
 
   const refreshNetworkStatus = useCallback(async (client: NimiqClient) => {
     const [consensusResult, blockResult] = await Promise.allSettled([
@@ -56,6 +58,23 @@ export function AppProviders({ children }: PropsWithChildren) {
         console.error('Nimiq Hub redirect connection failed', redirectError)
         setError(friendlyError(redirectError))
         setStatus('ready')
+      })
+      // Address verification also redirects on mobile (see verifyConnectedNimiqAddress).
+      // Finish it here since the component that started it was unmounted by the redirect.
+      hub.on(HubApi.RequestType.SIGN_MESSAGE, (result, state: { challengeId?: unknown } | undefined) => {
+        const challengeId = typeof state?.challengeId === 'string' ? state.challengeId : null
+        if (!challengeId) return
+        completeVerification({
+          challengeId,
+          publicKey: bytesToHex(result.signerPublicKey),
+          signature: bytesToHex(result.signature),
+          signatureMode: 'hub',
+        }).catch((verifyError) => {
+          console.error('Nimiq Hub redirect verification failed', verifyError)
+        }).finally(() => setVerificationTick((value) => value + 1))
+      }, (signError) => {
+        console.error('Nimiq Hub sign-message redirect failed', signError)
+        setVerificationTick((value) => value + 1)
       })
       try {
         await hub.checkRedirectResponse()
@@ -122,8 +141,8 @@ export function AppProviders({ children }: PropsWithChildren) {
   }, [])
 
   const value = useMemo(() => ({
-    status, account, consensus, blockNumber, error, connect, retry: initialize, disconnect,
-  }), [status, account, consensus, blockNumber, error, connect, initialize, disconnect])
+    status, account, consensus, blockNumber, error, connect, retry: initialize, disconnect, verificationTick,
+  }), [status, account, consensus, blockNumber, error, connect, initialize, disconnect, verificationTick])
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
 }

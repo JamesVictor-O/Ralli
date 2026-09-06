@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { requireSupabase } from '../lib/supabase.ts'
 import { verifyConnectedNimiqAddress } from '../nimiq/signatures.ts'
 import { useBackend } from '../store/backend.ts'
+import { useWallet } from '../store/wallet.ts'
 
 export type WalletVerificationStatus = 'idle' | 'checking' | 'unverified' | 'verifying' | 'verified' | 'error'
 
@@ -11,6 +12,7 @@ function sameAddress(left: string | null, right: string) {
 
 export function useWalletVerification(account: string | null) {
   const { status: backendStatus, user } = useBackend()
+  const { verificationTick } = useWallet()
   const [status, setStatus] = useState<WalletVerificationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
@@ -35,16 +37,21 @@ export function useWalletVerification(account: string | null) {
   }, [account, backendStatus, user])
 
   useEffect(() => {
+    // verificationTick changes when a mobile Nimiq Hub redirect finishes verifying in
+    // the background (see AppProviders) — re-check the profile when that happens, since
+    // the component instance that originally called verify() was unmounted by the redirect.
     void Promise.resolve().then(refresh)
-  }, [refresh])
+  }, [refresh, verificationTick])
 
   const verify = useCallback(async () => {
     if (!account) return
     setStatus('verifying')
     setError(null)
     try {
-      await verifyConnectedNimiqAddress(account)
-      setStatus('verified')
+      const result = await verifyConnectedNimiqAddress(account)
+      // On mobile this resolves with { pending: true } right before the page navigates
+      // away to Nimiq Hub — the real result lands later via verificationTick above.
+      if (!('pending' in result && result.pending)) setStatus('verified')
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : 'Wallet verification failed.'
       setError(/reject|declin|cancel|denied/i.test(message) ? 'Verification cancelled. Nothing was changed.' : message)
