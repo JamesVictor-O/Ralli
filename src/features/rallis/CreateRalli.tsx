@@ -83,7 +83,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
       return
     }
     if (backendStatus !== 'ready' || !user) {
-      if (backendStatus === 'demo') setError('Supabase is not configured in this deployment. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then redeploy Ralli.')
+      if (backendStatus === 'demo') setError('Supabase is not configured in this deployment. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY, then redeploy Ralli.')
       else if (backendStatus === 'error') setError(backendError || 'Ralli could not start its Supabase session.')
       else setError('Ralli is finishing its Supabase connection. Wait a moment, then try again.')
       return

@@ -5,7 +5,7 @@ The database is managed through versioned migrations in `supabase/migrations`.
 ## Apply to a new Supabase project
 
 1. Create a Supabase project and enable **Anonymous Sign-Ins** under Authentication settings.
-2. Add its project URL and publishable/anon key to `.env.local`.
+2. Add its project URL and publishable key to `.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
    Browser wallet connections use Nimiq Hub and default to mainnet. Set `VITE_NIMIQ_HUB_URL=https://hub.nimiq-testnet.com` while testing.
 3. Install the Supabase CLI, then link and push:
 
