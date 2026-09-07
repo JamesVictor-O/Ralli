@@ -2,7 +2,7 @@ import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, X } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
-import { createResponse, ensureVerifiedProfile } from '../../lib/social.ts'
+import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
 import { validateMedia } from '../../lib/media.ts'
 
 interface JoinRalliProps {
@@ -62,7 +62,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
     setError('')
     setSubmitting(true)
     try {
-      await ensureVerifiedProfile(user.id, account)
+      await ensureWalletAttached(user.id, account)
       await createResponse({ userId: user.id, ralliId, format, text: caption, media })
       setSubmitted(true)
       onPosted?.()

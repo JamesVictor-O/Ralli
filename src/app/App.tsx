@@ -12,8 +12,12 @@ import { JoinRalli } from '../features/rallis/JoinRalli.tsx'
 import { Activity } from '../features/activity/Activity.tsx'
 import { RalliChain } from '../features/chains/RalliChain.tsx'
 import { Profile } from '../features/profile/Profile.tsx'
+import { Onboarding } from '../features/onboarding/Onboarding.tsx'
 import { WalletPanel } from '../components/navigation/WalletPanel.tsx'
+import { Avatar } from '../components/ui/Avatar.tsx'
 import { useWallet } from '../store/wallet.ts'
+import { useBackend } from '../store/backend.ts'
+import { useMyProfileSummary } from '../hooks/useMyProfileSummary.ts'
 import { SearchPanel } from '../features/discover/SearchPanel.tsx'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
 import { Boost } from '../features/rewards/Boost.tsx'
@@ -39,6 +43,9 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
   const { status: walletStatus, account } = useWallet()
+  const { user } = useBackend()
+  const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
+  const showOnboarding = walletStatus === 'connected' && Boolean(myProfile) && !myProfile?.onboarded
   const finishSplash = useCallback(() => setShowSplash(false), [])
   const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
 
@@ -117,8 +124,8 @@ export default function App() {
         </nav>
         <button className="create-button" type="button" onClick={() => setActiveFlow('create')}><Plus aria-hidden="true" /><span>Start a Ralli</span></button>
         <button className="profile-chip" type="button" onClick={() => setWalletOpen(true)}>
-          <span className="avatar avatar--me" aria-hidden="true">AO</span>
-          <span><strong>{account ? 'Nimiq connected' : 'Alex O.'}</strong><small>{account ? `${account.slice(0, 7)}…${account.slice(-4)}` : 'Connect Nimiq wallet'}</small></span>
+          <Avatar initials={myProfile?.initials ?? 'RA'} avatarUrl={myProfile?.avatarUrl} className="avatar--me" />
+          <span><strong>{myProfile?.displayName ?? (account ? 'Nimiq connected' : 'Your Ralli profile')}</strong><small>{account ? `${account.slice(0, 7)}…${account.slice(-4)}` : 'Connect Nimiq wallet'}</small></span>
           <ChevronRight aria-hidden="true" />
         </button>
       </aside>
@@ -194,6 +201,7 @@ export default function App() {
           void fetchRalliById(id).then(setSelectedRalli)
         }} />
       )}
+      {showOnboarding && user && <Onboarding userId={user.id} onDone={() => void refreshMyProfile()} />}
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
       {boostTarget && <Boost ralliId={boostTarget.id} creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}

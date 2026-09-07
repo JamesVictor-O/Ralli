@@ -1,8 +1,9 @@
 import { type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, Coins, Heart, UsersRound } from 'lucide-react'
+import { Avatar } from '../../components/ui/Avatar.tsx'
 
 export interface Dare {
-  id: string; author: string; initials: string; time: string; prompt: string; category: string
+  id: string; author: string; initials: string; authorAvatarUrl: string | null; time: string; prompt: string; category: string
   participants: number; reactions: number; passes: number; reward: number; starterReward: number; boosts: number; boostCount: number; image: string; imageAlt: string
   tone: 'coral' | 'violet'
   description?: string; endsAt?: string; creatorId?: string
@@ -30,7 +31,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
       onClick={openFromCard} onKeyDown={openFromKeyboard}>
       <div className="dare-card__top">
         <div className="author">
-          <span className={`avatar avatar--author avatar--${dare.tone}`}>{dare.initials}</span>
+          <Avatar initials={dare.initials} avatarUrl={dare.authorAvatarUrl} className={`avatar--author avatar--${dare.tone}`} />
           <span><strong>{dare.author} started a Ralli</strong><small>{dare.time} ago · {dare.category}</small></span>
         </div>
         <span className="ralli-funded">

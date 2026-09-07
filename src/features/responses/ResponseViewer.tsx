@@ -3,6 +3,7 @@ import { AlertCircle, LoaderCircle, MoreHorizontal, Repeat2, Share2, Sparkles } 
 import { Reactions } from './Reactions.tsx'
 import { TipChip } from './TipChip.tsx'
 import { PassItOn } from '../chains/PassItOn.tsx'
+import { Avatar } from '../../components/ui/Avatar.tsx'
 import { fetchResponses, type RalliResponse } from '../../lib/responses.ts'
 import { useBackend } from '../../store/backend.ts'
 
@@ -56,7 +57,7 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
       {status === 'empty' && <div className="response-feed-state"><Sparkles aria-hidden="true" /><strong>No responses yet</strong><p>Be the first person to take this Ralli somewhere new.</p></div>}
       {status === 'success' && <div className="response-list">
         {orderedResponses.map((response) => <article className="response-post" key={response.id}>
-          <header><span className="avatar avatar--response avatar--lime">{response.initials}</span><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div><button className="response-more" type="button" aria-label={`More options for ${response.author}'s response`}><MoreHorizontal aria-hidden="true" /></button></header>
+          <header><Avatar initials={response.initials} avatarUrl={response.authorAvatarUrl} className="avatar--response avatar--lime" /><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div><button className="response-more" type="button" aria-label={`More options for ${response.author}'s response`}><MoreHorizontal aria-hidden="true" /></button></header>
           {response.copy && response.mediaUrl && <p className="response-post__copy">{response.copy}</p>}
           {response.mediaUrl && response.format === 'video' && <video className="response-post__image" src={response.mediaUrl} controls preload="metadata" />}
           {response.mediaUrl && response.format === 'photo' && <img className="response-post__image" src={response.mediaUrl} alt={`${response.author}'s response to ${prompt}`} width="720" height="520" />}

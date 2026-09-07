@@ -2,7 +2,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'r
 import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, Lock, UsersRound, X, Zap } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
-import { createRalli, ensureVerifiedProfile } from '../../lib/social.ts'
+import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
 import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { recordPaymentSubmission } from '../../lib/payments.ts'
@@ -94,7 +94,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
     setSubmitting(true)
     setPublishStage('wallet')
     try {
-      await ensureVerifiedProfile(user.id, account)
+      await ensureWalletAttached(user.id, account)
       if (coverOptimizationRef.current && coverPreparing) setPublishStage('prepare')
       const preparedCover = coverOptimizationRef.current ? await coverOptimizationRef.current.catch(() => cover) : cover
       const id = await createRalli({

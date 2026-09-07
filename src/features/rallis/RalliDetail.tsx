@@ -3,6 +3,7 @@ import { ArrowLeft, Clock3, Heart, Repeat2, Share2, UsersRound, X } from 'lucide
 import { Boost } from '../rewards/Boost.tsx'
 import { RewardPool } from '../rewards/RewardPool.tsx'
 import { ResponseViewer } from '../responses/ResponseViewer.tsx'
+import { Avatar } from '../../components/ui/Avatar.tsx'
 import type { Dare } from '../discover/DareCard.tsx'
 
 function hoursLeft(endsAt?: string) {
@@ -34,7 +35,7 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
 
         <div className="detail-body">
           <div className="author detail-author">
-            <span className="avatar avatar--author avatar--coral">{ralli.initials}</span>
+            <Avatar initials={ralli.initials} avatarUrl={ralli.authorAvatarUrl} className="avatar--author avatar--coral" />
             <span><strong>{ralli.author} started this Ralli</strong><small>{ralli.time} ago</small></span>
             <button className="icon-button" type="button" aria-label="Share Ralli" onClick={() => void navigator.share?.({ title: ralli.prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralli.id}` })}><Share2 aria-hidden="true" /></button>
           </div>

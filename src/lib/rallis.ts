@@ -1,6 +1,7 @@
 import { LUNA_PER_NIM } from '../nimiq/payments.ts'
 import type { Dare } from '../features/discover/DareCard.tsx'
 import type { RalliFeedRow } from '../types/database.ts'
+import { publicAvatarUrl } from './media.ts'
 import { requireSupabase } from './supabase.ts'
 
 const fallbackCovers = [
@@ -40,6 +41,7 @@ export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
     id: row.id ?? `ralli-${index}`,
     author,
     initials: initials(author),
+    authorAvatarUrl: publicAvatarUrl(row.avatar_path),
     time: relativeTime(row.created_at),
     prompt: row.prompt || 'Untitled Ralli',
     category: row.category || 'Just for fun',

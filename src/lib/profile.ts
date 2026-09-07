@@ -1,6 +1,9 @@
 import { LUNA_PER_NIM } from '../nimiq/payments.ts'
+import type { Database } from '../types/database.ts'
 import { publicMediaUrl } from './media.ts'
 import { requireSupabase } from './supabase.ts'
+
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 export async function fetchMyProfile(userId: string) {
   const database = requireSupabase()
@@ -32,9 +35,37 @@ export async function fetchMyProfile(userId: string) {
   }
 }
 
-export async function updateMyProfile(userId: string, displayName: string, bio: string) {
-  const { error } = await requireSupabase().from('profiles').update({ display_name: displayName.trim(), bio: bio.trim() }).eq('id', userId)
+export interface ProfileIdentityFields {
+  displayName?: string
+  bio?: string
+  handle?: string | null
+  avatarPath?: string | null
+  markOnboarded?: boolean
+}
+
+export async function updateMyProfile(userId: string, fields: ProfileIdentityFields) {
+  const payload: ProfileUpdate = {}
+  if (fields.displayName !== undefined) payload.display_name = fields.displayName.trim()
+  if (fields.bio !== undefined) payload.bio = fields.bio.trim()
+  if (fields.handle !== undefined) payload.handle = fields.handle ? fields.handle.trim().toLowerCase() : null
+  if (fields.avatarPath !== undefined) payload.avatar_path = fields.avatarPath
+  if (fields.markOnboarded) payload.onboarded_at = new Date().toISOString()
+
+  const { error } = await requireSupabase().from('profiles').update(payload).eq('id', userId)
+  if (error) {
+    if (error.code === '23505') throw new Error('That username is already taken.')
+    throw error
+  }
+}
+
+export async function fetchProfileSummary(userId: string) {
+  const { data, error } = await requireSupabase()
+    .from('profiles')
+    .select('display_name, handle, avatar_path, onboarded_at')
+    .eq('id', userId)
+    .single()
   if (error) throw error
+  return data
 }
 
 export async function fetchMyChains(userId: string) {

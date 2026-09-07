@@ -1,6 +1,7 @@
 import { requireSupabase } from './supabase.ts'
 import { createId, uploadRalliMedia } from './media.ts'
 import { friendlyNetworkError, withNetworkRetry } from './retry.ts'
+import { verifyConnectedNimiqAddress } from '../nimiq/signatures.ts'
 
 export interface CreateRalliInput {
   userId: string
@@ -67,5 +68,21 @@ export async function ensureVerifiedProfile(userId: string, account: string | nu
   const connected = account.replace(/\s/g, '').toUpperCase()
   if (!data.nimiq_address_verified_at || data.nimiq_address !== connected) {
     throw new Error('Verify this Nimiq address from the wallet panel before posting.')
+  }
+}
+
+// Used by Create/Join instead of calling ensureVerifiedProfile directly: if the wallet
+// just isn't verified yet, sign the verification challenge right here instead of making
+// the user leave to a separate wallet panel and come back. Network/other errors, and a
+// wallet that isn't connected at all, still surface as-is — only the "not verified yet"
+// gate gets a retry.
+export async function ensureWalletAttached(userId: string, account: string | null) {
+  try {
+    await ensureVerifiedProfile(userId, account)
+  } catch (gateError) {
+    const message = gateError instanceof Error ? gateError.message : ''
+    if (!account || !/verify this nimiq address/i.test(message)) throw gateError
+    await verifyConnectedNimiqAddress(account)
+    await ensureVerifiedProfile(userId, account)
   }
 }

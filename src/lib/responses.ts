@@ -1,5 +1,5 @@
 import { LUNA_PER_NIM } from '../nimiq/payments.ts'
-import { publicMediaUrl } from './media.ts'
+import { publicAvatarUrl, publicMediaUrl } from './media.ts'
 import { requireSupabase } from './supabase.ts'
 
 export interface RalliResponse {
@@ -8,6 +8,7 @@ export interface RalliResponse {
   authorId: string
   author: string
   authorAddress: string | null
+  authorAvatarUrl: string | null
   initials: string
   createdAt: string
   copy: string
@@ -32,7 +33,7 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   const authorIds = [...new Set(rows.map((row) => row.author_id))]
   const responseIds = rows.map((row) => row.id)
   const [profilesResult, reactionsResult, tipsResult] = await Promise.all([
-    database.from('profiles').select('id, display_name, handle, nimiq_address, nimiq_address_verified_at').in('id', authorIds),
+    database.from('profiles').select('id, display_name, handle, avatar_path, nimiq_address, nimiq_address_verified_at').in('id', authorIds),
     database.from('reactions').select('*').in('response_id', responseIds),
     database.from('response_tips').select('*').in('response_id', responseIds).eq('status', 'confirmed'),
   ])
@@ -53,6 +54,7 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
       authorId: row.author_id,
       author: name,
       authorAddress: profile?.nimiq_address_verified_at ? profile.nimiq_address : null,
+      authorAvatarUrl: publicAvatarUrl(profile?.avatar_path ?? null),
       initials: initials(name),
       createdAt: row.created_at,
       copy: row.text_content || '',

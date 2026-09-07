@@ -8,6 +8,7 @@ type ProfileRow = {
   avatar_path: string | null
   nimiq_address: string | null
   nimiq_address_verified_at: string | null
+  onboarded_at: string | null
   created_at: string
   updated_at: string
 }
