@@ -13,8 +13,13 @@ function hoursLeft(endsAt?: string) {
   return hours > 24 ? `${Math.ceil(hours / 24)}d` : `${hours}h`
 }
 
+function isExpired(endsAt?: string) {
+  return endsAt ? new Date(endsAt).getTime() <= Date.now() : false
+}
+
 export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: () => void; onJoin: () => void }) {
   const [boostOpen, setBoostOpen] = useState(false)
+  const expired = isExpired(ralli.endsAt)
   useBodyScrollLock()
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -67,7 +72,9 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
         </div>
 
         <footer className="flow-actions">
-          <button className="button button--ink button--wide" type="button" onClick={onJoin}>Join this Ralli <ArrowLeft className="arrow-forward" aria-hidden="true" /></button>
+          {expired
+            ? <span className="ralli-ended-note">This Ralli has ended — no new responses can be posted.</span>
+            : <button className="button button--ink button--wide" type="button" onClick={onJoin}>Join this Ralli <ArrowLeft className="arrow-forward" aria-hidden="true" /></button>}
         </footer>
       </section>
       {boostOpen && <Boost ralliId={ralli.id} creator={ralli.author} ralli={ralli.prompt} pool={ralli.reward} onClose={() => setBoostOpen(false)} />}

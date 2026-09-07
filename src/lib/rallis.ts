@@ -75,13 +75,18 @@ export async function fetchRalliById(id: string) {
 // once the platform has been quiet that long.
 export async function fetchTodaysRalli(): Promise<Dare | null> {
   const database = requireSupabase()
+  // Nothing flips a Ralli's status when its clock runs out — ends_at is just a
+  // timestamp — so both queries have to exclude expired rows themselves.
+  const now = new Date().toISOString()
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const recent = await database.from('ralli_feed').select('*').eq('status', 'active')
+    .gt('ends_at', now)
     .gte('created_at', cutoff).order('response_count', { ascending: false }).order('created_at', { ascending: false }).limit(1)
   if (recent.error) throw recent.error
   if (recent.data?.[0]) return mapFeedRow(recent.data[0])
 
   const fallback = await database.from('ralli_feed').select('*').eq('status', 'active')
+    .gt('ends_at', now)
     .order('created_at', { ascending: false }).limit(1)
   if (fallback.error) throw fallback.error
   return fallback.data?.[0] ? mapFeedRow(fallback.data[0]) : null
@@ -116,6 +121,7 @@ export async function fetchRalliFeed() {
     .from('ralli_feed')
     .select('*')
     .eq('status', 'active')
+    .gt('ends_at', new Date().toISOString())
     .order('created_at', { ascending: false })
     .limit(30)
 

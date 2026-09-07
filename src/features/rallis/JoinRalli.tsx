@@ -71,7 +71,9 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
       onPosted?.()
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : 'Your response could not be posted.'
-      setError(/one_response_per_ralli|duplicate key/i.test(message) ? 'You already responded to this Ralli.' : message)
+      if (/one_response_per_ralli|duplicate key/i.test(message)) setError('You already responded to this Ralli.')
+      else if (/ralli_expired/i.test(message)) setError('This Ralli has ended — it can no longer accept responses.')
+      else setError(message)
     } finally {
       setSubmitting(false)
     }
