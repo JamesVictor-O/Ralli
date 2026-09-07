@@ -69,6 +69,48 @@ export async function fetchRalliById(id: string) {
   return mapFeedRow(data)
 }
 
+// The single global prompt every session opens on. There's no curated "prompt of the
+// day" table — anyone can still start a Ralli anytime — so "today's" is whichever active
+// Ralli is pulling the most responses in the last 24h, falling back to the newest overall
+// once the platform has been quiet that long.
+export async function fetchTodaysRalli(): Promise<Dare | null> {
+  const database = requireSupabase()
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const recent = await database.from('ralli_feed').select('*').eq('status', 'active')
+    .gte('created_at', cutoff).order('response_count', { ascending: false }).order('created_at', { ascending: false }).limit(1)
+  if (recent.error) throw recent.error
+  if (recent.data?.[0]) return mapFeedRow(recent.data[0])
+
+  const fallback = await database.from('ralli_feed').select('*').eq('status', 'active')
+    .order('created_at', { ascending: false }).limit(1)
+  if (fallback.error) throw fallback.error
+  return fallback.data?.[0] ? mapFeedRow(fallback.data[0]) : null
+}
+
+export interface RalliPresence {
+  cities: { city: string; flag: string; count: number }[]
+  moreCount: number
+}
+
+// Powers the "Lagos 🇳🇬 · Berlin 🇩🇪 +47" pills — real cities pulled from responses that
+// carried geo data (see src/lib/geo.ts), never fabricated. Rallis with no geo-tagged
+// responses yet (older data, or geo lookup failed) just show no pills.
+export async function fetchRalliPresence(ralliId: string): Promise<RalliPresence> {
+  const { data, error } = await requireSupabase().from('responses').select('city, flag')
+    .eq('ralli_id', ralliId).not('city', 'is', null).limit(1000)
+  if (error) throw error
+
+  const counts = new Map<string, { city: string; flag: string; count: number }>()
+  for (const row of data ?? []) {
+    if (!row.city) continue
+    const existing = counts.get(row.city)
+    if (existing) existing.count += 1
+    else counts.set(row.city, { city: row.city, flag: row.flag || '', count: 1 })
+  }
+  const sorted = [...counts.values()].sort((a, b) => b.count - a.count)
+  return { cities: sorted.slice(0, 4), moreCount: Math.max(0, sorted.length - 4) }
+}
+
 export async function fetchRalliFeed() {
   const { data, error } = await requireSupabase()
     .from('ralli_feed')

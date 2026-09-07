@@ -9,10 +9,12 @@ interface DareFeedProps {
   onBoost: (ralli: Dare) => void
   onCreate: () => void
   refreshKey?: number
+  excludeId?: string | null
 }
 
-export function DareFeed({ onOpen, onJoin, onBoost, onCreate, refreshKey = 0 }: DareFeedProps) {
-  const { rallis, status, error, retry } = useRalliFeed(demoRallis, refreshKey)
+export function DareFeed({ onOpen, onJoin, onBoost, onCreate, refreshKey = 0, excludeId = null }: DareFeedProps) {
+  const { rallis: allRallis, status, error, retry } = useRalliFeed(demoRallis, refreshKey)
+  const rallis = excludeId ? allRallis.filter((ralli) => ralli.id !== excludeId) : allRallis
 
   if (status === 'loading') {
     return <section className="dare-feed" aria-label="Loading Rallis" aria-busy="true">{[0, 1].map((item) => <div className="dare-card feed-skeleton" key={item}><span /><strong /><i /><div /></div>)}</section>

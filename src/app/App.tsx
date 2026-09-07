@@ -5,6 +5,7 @@ import {
   Sparkles, UserRound, WalletCards, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
+import { TodaysRalli } from '../features/discover/TodaysRalli.tsx'
 import type { Dare } from '../features/discover/DareCard.tsx'
 import { RalliDetail } from '../features/rallis/RalliDetail.tsx'
 import { CreateRalli } from '../features/rallis/CreateRalli.tsx'
@@ -40,6 +41,7 @@ export default function App() {
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
   const [selectedRalli, setSelectedRalli] = useState<Dare | null>(null)
   const [feedRefreshKey, setFeedRefreshKey] = useState(0)
+  const [todaysRalliId, setTodaysRalliId] = useState<string | null>(null)
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
@@ -152,6 +154,8 @@ export default function App() {
           <button className="desktop-search" type="button" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /><span>Search Rallis</span><kbd>⌘ K</kbd></button>
         </section>
 
+        <TodaysRalli onJoin={(ralli) => openRalli(ralli, 'join')} onOpen={(ralli) => openRalli(ralli)} refreshKey={feedRefreshKey} onLoaded={setTodaysRalliId} />
+
         <section className="economy-loop" aria-labelledby="economy-heading">
           <header><div><p className="eyebrow">Powered by Nimiq</p><h2 id="economy-heading">Participation has real momentum.</h2></div><span className="nim-mark">NIM</span></header>
           <div className="economy-loop__steps">
@@ -166,7 +170,7 @@ export default function App() {
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
         </div>
-        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} refreshKey={feedRefreshKey} />
+        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
         </>)}
         {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli)} onRead={() => void refreshUnreadActivity()} />}
         {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli)} />}

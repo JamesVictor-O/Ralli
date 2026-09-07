@@ -38,6 +38,9 @@ type ResponseRow = {
   text_content: string | null
   media_path: string | null
   status: Database['public']['Enums']['response_status']
+  city: string | null
+  country: string | null
+  flag: string | null
   created_at: string
   updated_at: string
 }

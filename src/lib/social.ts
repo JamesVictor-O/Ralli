@@ -1,5 +1,6 @@
 import { requireSupabase } from './supabase.ts'
 import { createId, uploadRalliMedia } from './media.ts'
+import { fetchViewerGeo } from './geo.ts'
 import { friendlyNetworkError, withNetworkRetry } from './retry.ts'
 import { verifyConnectedNimiqAddress } from '../nimiq/signatures.ts'
 
@@ -49,12 +50,16 @@ export interface CreateResponseInput {
 export async function createResponse(input: CreateResponseInput) {
   let mediaPath: string | null = null
   if (input.media) mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media)
+  const geo = await fetchViewerGeo()
   const { data, error } = await requireSupabase().from('responses').insert({
     ralli_id: input.ralliId,
     author_id: input.userId,
     format: input.format,
     text_content: input.text.trim() || null,
     media_path: mediaPath,
+    city: geo.city,
+    country: geo.country,
+    flag: geo.flag,
   }).select('id').single()
   if (error) throw error
   return data.id

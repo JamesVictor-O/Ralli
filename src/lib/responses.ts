@@ -67,6 +67,13 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   })
 }
 
+export async function hasResponded(ralliId: string, userId: string) {
+  const { data, error } = await requireSupabase().from('responses').select('id')
+    .eq('ralli_id', ralliId).eq('author_id', userId).maybeSingle()
+  if (error) throw error
+  return Boolean(data)
+}
+
 export async function setReaction(responseId: string, userId: string, previous: string | null, next: string | null) {
   const database = requireSupabase()
   if (previous) {
