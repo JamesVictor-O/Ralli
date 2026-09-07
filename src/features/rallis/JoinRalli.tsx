@@ -4,6 +4,7 @@ import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
 import { validateMedia } from '../../lib/media.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 interface JoinRalliProps {
   ralliId: string
@@ -25,6 +26,8 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
   const libraryRef = useRef<HTMLInputElement>(null)
   const { status: backendStatus, user, error: backendError } = useBackend()
   const { account } = useWallet()
+
+  useBodyScrollLock()
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()

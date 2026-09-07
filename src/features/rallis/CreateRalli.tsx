@@ -6,6 +6,7 @@ import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
 import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { recordPaymentSubmission } from '../../lib/payments.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 const kickstartPresets = ['0', '5', '10', '25']
 
@@ -32,6 +33,8 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
   const coverSelectionRef = useRef(0)
   const { status: backendStatus, user, error: backendError, retry: retryBackend } = useBackend()
   const { account } = useWallet()
+
+  useBodyScrollLock()
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()

@@ -3,6 +3,7 @@ import { Check, LoaderCircle, ShieldCheck, X, Zap } from 'lucide-react'
 import { useWallet } from '../../store/wallet.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { recordPaymentSubmission } from '../../lib/payments.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
 
@@ -26,6 +27,8 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
   const [state, setState] = useState<'idle' | 'submitting' | 'success'>('idle')
   const [error, setError] = useState('')
   const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
+
+  useBodyScrollLock()
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && onClose()

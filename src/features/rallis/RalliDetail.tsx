@@ -4,6 +4,7 @@ import { Boost } from '../rewards/Boost.tsx'
 import { RewardPool } from '../rewards/RewardPool.tsx'
 import { ResponseViewer } from '../responses/ResponseViewer.tsx'
 import { Avatar } from '../../components/ui/Avatar.tsx'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import type { Dare } from '../discover/DareCard.tsx'
 
 function hoursLeft(endsAt?: string) {
@@ -14,6 +15,7 @@ function hoursLeft(endsAt?: string) {
 
 export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: () => void; onJoin: () => void }) {
   const [boostOpen, setBoostOpen] = useState(false)
+  useBodyScrollLock()
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', closeOnEscape)

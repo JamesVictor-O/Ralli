@@ -1377,7 +1377,10 @@ img.avatar { object-fit: cover; }
   .economy-loop__steps small { max-width: 90px; }
   .participant-stack { max-width: 130px; flex-wrap: wrap; }
   .participant-stack strong { flex-basis: 100%; margin: 5px 0 0; }
-  .button--ink { max-width: 180px; padding: 0 12px; font-size: 12px; }
+  /* Scoped to the daily-ralli footer only — this used to be a bare .button--ink rule and
+     was capping every ink button app-wide (e.g. "Join this Ralli", "Post response"),
+     fighting their .button--wide full-width intent down to a squeezed ~190px pill. */
+  .daily-ralli__footer .button--ink { max-width: 180px; padding: 0 12px; font-size: 12px; }
   .feed-heading { display: block; margin-top: 30px; }
   .feed-tabs { margin-top: 14px; }
   .feed-tabs button { flex: 1; }

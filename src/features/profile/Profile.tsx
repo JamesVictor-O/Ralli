@@ -4,6 +4,7 @@ import { fetchMyProfile, updateMyProfile } from '../../lib/profile.ts'
 import { optimizeAvatarImage, publicAvatarUrl, uploadAvatar } from '../../lib/media.ts'
 import { Avatar } from '../../components/ui/Avatar.tsx'
 import { useBackend } from '../../store/backend.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 type ProfileTab = 'Responses' | 'Rallis' | 'Trophies'
 type ProfileData = Awaited<ReturnType<typeof fetchMyProfile>>
@@ -22,6 +23,8 @@ export function Profile() {
   const [error, setError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const { user } = useBackend()
+
+  useBodyScrollLock(editing)
 
   const load = useCallback(async () => {
     if (!user) return

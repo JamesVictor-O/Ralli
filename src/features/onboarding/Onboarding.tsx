@@ -3,6 +3,7 @@ import { Image, LoaderCircle, Sparkles } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar.tsx'
 import { optimizeAvatarImage, uploadAvatar } from '../../lib/media.ts'
 import { updateMyProfile } from '../../lib/profile.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 function initialsFrom(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '🙂'
@@ -17,6 +18,7 @@ export function Onboarding({ userId, onDone }: { userId: string; onDone: () => v
   const [error, setError] = useState('')
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
+  useBodyScrollLock()
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview) }, [avatarPreview])
 
   function chooseAvatar(event: ChangeEvent<HTMLInputElement>) {

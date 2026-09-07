@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, ArrowUpRight, Search, Sparkles, UsersRound, X } from 'lucide-react'
 import { fetchRalliFeed } from '../../lib/rallis.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import type { Dare } from './DareCard.tsx'
 
 export function SearchPanel({ onClose, onSelect }: { onClose: () => void; onSelect: (ralli: Dare) => void }) {
   const [query, setQuery] = useState('')
   const [rallis, setRallis] = useState<Dare[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  useBodyScrollLock()
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', closeOnEscape)

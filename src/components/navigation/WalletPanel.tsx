@@ -3,6 +3,7 @@ import { AlertCircle, Check, Copy, ExternalLink, LoaderCircle, RefreshCw, Shield
 import { useWallet } from '../../store/wallet.ts'
 import { useWalletVerification } from '../../hooks/useWalletVerification.ts'
 import { useNimBalance } from '../../hooks/useNimBalance.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { isNimiqPayContext } from '../../nimiq/hub.ts'
 
 function shortenAddress(address: string) {
@@ -15,6 +16,8 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
   const verification = useWalletVerification(account)
   const balance = useNimBalance(status === 'connected' ? account : null)
   const embedded = isNimiqPayContext()
+
+  useBodyScrollLock()
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && onClose()

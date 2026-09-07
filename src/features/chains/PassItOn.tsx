@@ -5,6 +5,7 @@ import { recordPass } from '../../lib/responses.ts'
 import { ensureWalletAttached } from '../../lib/social.ts'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 interface PassItOnProps {
   ralliId: string
@@ -23,6 +24,8 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   const { account } = useWallet()
   const ralliUrl = `${window.location.origin}${window.location.pathname}?ralli=${ralliId}`
   const nativeShare = (navigator as unknown as { share?: (data: ShareData) => Promise<void> }).share
+
+  useBodyScrollLock()
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && !saving && onClose()
