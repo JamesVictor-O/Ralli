@@ -44,9 +44,8 @@ export async function completeVerification(proof: SignatureProof) {
     // This address is already verified on another profile (e.g. a different device).
     // Redeem the one-time token to switch this browser into that existing account.
     const { error: otpError } = await database.auth.verifyOtp({
-      email: data.email,
       token_hash: data.tokenHash,
-      type: 'magiclink',
+      type: 'email',
     })
     if (otpError) throw new Error('This wallet is already registered, but Ralli could not switch you into that account. Please try again.')
     return { verified: true as const, address: data.address }
