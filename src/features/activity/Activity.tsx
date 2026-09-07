@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Bell, Heart, LoaderCircle, MessageCircle, Repeat2, Sparkles, Zap } from 'lucide-react'
+import { AlertCircle, Bell, ChevronRight, Heart, LoaderCircle, MessageCircle, Repeat2, Sparkles, Zap } from 'lucide-react'
 import { requireSupabase } from '../../lib/supabase.ts'
+import { fetchRalliById } from '../../lib/rallis.ts'
+import type { Dare } from '../discover/DareCard.tsx'
 import { useBackend } from '../../store/backend.ts'
 import type { Database } from '../../types/database.ts'
 
@@ -8,11 +10,11 @@ type Filter = 'All' | 'Social' | 'NIM'
 type ActivityRow = Database['public']['Tables']['activity_events']['Row']
 
 const presentation = {
-  reaction: { icon: Heart, tone: 'coral', title: 'Someone reacted to your response', kind: 'Social' },
-  pass: { icon: Repeat2, tone: 'violet', title: 'Someone passed your Ralli on', kind: 'Social' },
-  response: { icon: MessageCircle, tone: 'blue', title: 'Someone joined your Ralli', kind: 'Social' },
-  tip: { icon: Zap, tone: 'lime', title: 'You received a NIM tip', kind: 'NIM' },
-  boost: { icon: Sparkles, tone: 'violet', title: 'Someone boosted your reward pool', kind: 'NIM' },
+  reaction: { icon: Heart, tone: 'coral', title: (actor: string) => `${actor} reacted to your response`, kind: 'Social' },
+  pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, kind: 'Social' },
+  response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, kind: 'Social' },
+  tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, kind: 'NIM' },
+  boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} boosted your reward pool`, kind: 'NIM' },
 } as const
 
 function relativeTime(value: string) {
@@ -23,19 +25,28 @@ function relativeTime(value: string) {
   return `${Math.floor(minutes / 1_440)}d`
 }
 
-export function Activity() {
+export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) => void; onRead?: () => void }) {
   const [filter, setFilter] = useState<Filter>('All')
   const [events, setEvents] = useState<ActivityRow[]>([])
+  const [actorNames, setActorNames] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<'loading' | 'success' | 'empty' | 'error'>('loading')
+  const [openingId, setOpeningId] = useState<string | null>(null)
   const { user } = useBackend()
 
   const load = useCallback(async () => {
     if (!user) return
     setStatus('loading')
-    const { data, error } = await requireSupabase().from('activity_events').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
+    const database = requireSupabase()
+    const { data, error } = await database.from('activity_events').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
     if (error) return setStatus('error')
     setEvents(data ?? [])
     setStatus(data?.length ? 'success' : 'empty')
+
+    const actorIds = [...new Set((data ?? []).map((event) => event.actor_id).filter((id): id is string => Boolean(id)))]
+    if (actorIds.length) {
+      const { data: actors } = await database.from('profiles').select('id, display_name').in('id', actorIds)
+      if (actors) setActorNames(Object.fromEntries(actors.map((actor) => [actor.id, actor.display_name])))
+    }
   }, [user])
 
   useEffect(() => { void Promise.resolve().then(load) }, [load])
@@ -44,7 +55,31 @@ export function Activity() {
     if (!user) return
     const now = new Date().toISOString()
     const { error } = await requireSupabase().from('activity_events').update({ read_at: now }).eq('user_id', user.id).is('read_at', null)
-    if (!error) setEvents((current) => current.map((event) => ({ ...event, read_at: event.read_at ?? now })))
+    if (!error) {
+      setEvents((current) => current.map((event) => ({ ...event, read_at: event.read_at ?? now })))
+      onRead?.()
+    }
+  }
+
+  async function openEvent(event: ActivityRow) {
+    if (!event.ralli_id || openingId) return
+    setOpeningId(event.id)
+    try {
+      if (!event.read_at) {
+        const now = new Date().toISOString()
+        const { error } = await requireSupabase().from('activity_events').update({ read_at: now }).eq('id', event.id)
+        if (!error) {
+          setEvents((current) => current.map((item) => item.id === event.id ? { ...item, read_at: now } : item))
+          onRead?.()
+        }
+      }
+      const ralli = await fetchRalliById(event.ralli_id)
+      onOpenRalli(ralli)
+    } catch {
+      // The Ralli may have been removed since the event was recorded — nothing to open.
+    } finally {
+      setOpeningId(null)
+    }
   }
 
   const visibleEvents = events.filter((event) => {
@@ -61,7 +96,18 @@ export function Activity() {
     {status === 'success' && visibleEvents.length > 0 && <div className="activity-list"><section className="activity-group" aria-labelledby="activity-recent"><h2 id="activity-recent">Recent</h2><div className="activity-card">{visibleEvents.map((event) => {
       const item = presentation[event.kind as keyof typeof presentation] ?? presentation.response
       const Icon = item.icon
-      return <article className="activity-row" key={event.id}><span className={`event-icon event-icon--${item.tone}`}><Icon aria-hidden="true" /></span><span className="activity-row__copy"><strong>{item.title}</strong><small>{relativeTime(event.created_at)} ago</small></span>{!event.read_at && <span className="unread-dot"><span className="sr-only">Unread</span></span>}</article>
+      const actor = (event.actor_id && actorNames[event.actor_id]) || 'Someone'
+      const openable = Boolean(event.ralli_id)
+      return (
+        <button className="activity-row" type="button" key={event.id} disabled={!openable || openingId === event.id}
+          aria-busy={openingId === event.id} onClick={() => void openEvent(event)}>
+          <span className={`event-icon event-icon--${item.tone}`}><Icon aria-hidden="true" /></span>
+          <span className="activity-row__copy"><strong>{item.title(actor)}</strong></span>
+          <span className="activity-row__time">{relativeTime(event.created_at)} ago</span>
+          {!event.read_at && <span className="unread-dot"><span className="sr-only">Unread</span></span>}
+          {openingId === event.id ? <LoaderCircle className="spin" aria-hidden="true" /> : openable && <ChevronRight aria-hidden="true" />}
+        </button>
+      )
     })}</div></section></div>}
   </section>
 }

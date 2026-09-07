@@ -176,6 +176,9 @@ button:focus-visible, a:focus-visible {
   transition: background-color 100ms ease-out, transform 100ms ease-out;
 }
 .nav-button svg, .create-button svg { width: 20px; height: 20px; stroke-width: 1.9; }
+.icon-with-badge { position: relative; display: inline-flex; }
+.nav-badge { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); border: 2px solid var(--surface); }
+.bottom-nav__item .nav-badge { border-color: var(--canvas); }
 .nav-button.is-active { background: var(--surface); box-shadow: 0 4px 18px rgba(37, 35, 31, .04); }
 .nav-button:active, .create-button:active { transform: scale(.98); }
 .create-button { justify-content: center; background: var(--lime); }

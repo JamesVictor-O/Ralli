@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Copy, LoaderCircle, Send, Share2, X } from 'lucide-react'
 import { recordPass } from '../../lib/responses.ts'
-import { ensureVerifiedProfile } from '../../lib/social.ts'
+import { ensureWalletAttached } from '../../lib/social.ts'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 
@@ -41,7 +41,7 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     setSaving(true)
     setError('')
     try {
-      await ensureVerifiedProfile(user.id, account)
+      await ensureWalletAttached(user.id, account)
       if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} joined “${prompt}”`, url: ralliUrl })
       else await copyLink()
       await recordPass(ralliId, responseId, user.id)

@@ -18,6 +18,7 @@ import { Avatar } from '../components/ui/Avatar.tsx'
 import { useWallet } from '../store/wallet.ts'
 import { useBackend } from '../store/backend.ts'
 import { useMyProfileSummary } from '../hooks/useMyProfileSummary.ts'
+import { useUnreadActivityCount } from '../hooks/useUnreadActivityCount.ts'
 import { SearchPanel } from '../features/discover/SearchPanel.tsx'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
 import { Boost } from '../features/rewards/Boost.tsx'
@@ -45,6 +46,7 @@ export default function App() {
   const { status: walletStatus, account } = useWallet()
   const { user } = useBackend()
   const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
+  const { count: unreadActivity, refresh: refreshUnreadActivity } = useUnreadActivityCount(user)
   const showOnboarding = walletStatus === 'connected' && Boolean(myProfile) && !myProfile?.onboarded
   const finishSplash = useCallback(() => setShowSplash(false), [])
   const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
@@ -117,7 +119,7 @@ export default function App() {
                   setActiveFlow(null)
                   setActiveNav(item.label)
                 }}>
-                <Icon aria-hidden="true" /><span>{item.label}</span>
+                <span className="icon-with-badge"><Icon aria-hidden="true" />{item.label === 'Activity' && unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span><span>{item.label}</span>
               </button>
             )
           })}
@@ -137,7 +139,9 @@ export default function App() {
           </a>
           <div className="header-actions">
             <button className="icon-button" type="button" aria-label="Search" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /></button>
-            <button className="icon-button" type="button" aria-label="Open activity" onClick={() => setActiveNav('Activity')}><Bell aria-hidden="true" /></button>
+            <button className="icon-button" type="button" aria-label="Open activity" onClick={() => setActiveNav('Activity')}>
+              <span className="icon-with-badge"><Bell aria-hidden="true" />{unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span>
+            </button>
             <button className={`icon-button wallet-trigger ${walletStatus === 'connected' ? 'is-connected' : ''}`} type="button" aria-label="Open Nimiq wallet" onClick={() => setWalletOpen(true)}><WalletCards aria-hidden="true" /></button>
           </div>
         </header>
@@ -164,8 +168,8 @@ export default function App() {
         </div>
         <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} refreshKey={feedRefreshKey} />
         </>)}
-        {activeNav === 'Activity' && <Activity />}
-        {activeNav === 'Chains' && <RalliChain />}
+        {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli)} onRead={() => void refreshUnreadActivity()} />}
+        {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli)} />}
         {activeNav === 'Me' && <Profile />}
       </main>
 
@@ -221,7 +225,7 @@ export default function App() {
                   setActiveNav(item.label)
                 }
               }}>
-              <Icon aria-hidden="true" /><span>{item.label}</span>
+              <span className="icon-with-badge"><Icon aria-hidden="true" />{item.label === 'Activity' && unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span><span>{item.label}</span>
             </button>
           )
         })}
