@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, Check, Copy, ExternalLink, LoaderCircle, ShieldCheck, WalletCards, X } from 'lucide-react'
+import { AlertCircle, Check, Copy, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck, WalletCards, X } from 'lucide-react'
 import { useWallet } from '../../store/wallet.ts'
 import { useWalletVerification } from '../../hooks/useWalletVerification.ts'
+import { useNimBalance } from '../../hooks/useNimBalance.ts'
 import { isNimiqPayContext } from '../../nimiq/hub.ts'
 
 function shortenAddress(address: string) {
@@ -12,6 +13,7 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
   const { status, account, consensus, blockNumber, error, connect, retry, disconnect } = useWallet()
   const [copied, setCopied] = useState(false)
   const verification = useWalletVerification(account)
+  const balance = useNimBalance(status === 'connected' ? account : null)
   const embedded = isNimiqPayContext()
 
   useEffect(() => {
@@ -98,6 +100,19 @@ export function WalletPanel({ onClose }: { onClose: () => void }) {
                   {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 </button>
               </div>
+              <div className="balance-row">
+                <span><small>Balance</small>
+                  <strong>
+                    {balance.status === 'loading' && <LoaderCircle className="spin" aria-hidden="true" />}
+                    {balance.status === 'ready' && balance.balance !== null && `${balance.balance.toLocaleString(undefined, { maximumFractionDigits: 5 })} NIM`}
+                    {balance.status === 'error' && '— NIM'}
+                  </strong>
+                </span>
+                <button type="button" aria-label="Refresh balance" disabled={balance.status === 'loading'} onClick={() => void balance.refresh()}>
+                  <RefreshCw aria-hidden="true" />
+                </button>
+              </div>
+              {balance.status === 'error' && <p className="wallet-inline-error" role="status">{balance.error}</p>}
               <div className="network-row">
                 <span><i className={consensus ? 'is-online' : ''} />{consensus ? 'Network ready' : 'Syncing network'}</span>
                 {blockNumber !== null && <span>Block {blockNumber.toLocaleString()}</span>}
