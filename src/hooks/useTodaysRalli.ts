@@ -22,9 +22,14 @@ export function useTodaysRalli(refreshKey = 0) {
       setRalli(today)
       if (!today) { setStatus('empty'); return }
 
-      const joined = user ? await hasResponded(today.id, user.id) : false
+      // Fetched together rather than presence-only-if-not-joined: that dependency
+      // used to force a second sequential round trip on every load.
+      const [joined, todaysPresence] = await Promise.all([
+        user ? hasResponded(today.id, user.id) : Promise.resolve(false),
+        fetchRalliPresence(today.id),
+      ])
       setResponded(joined)
-      setPresence(joined ? null : await fetchRalliPresence(today.id))
+      setPresence(joined ? null : todaysPresence)
       setStatus('ready')
     } catch (failure) {
       console.error('Today’s Ralli request failed', failure)

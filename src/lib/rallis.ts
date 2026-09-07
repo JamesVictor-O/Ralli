@@ -76,18 +76,22 @@ export async function fetchRalliById(id: string) {
 export async function fetchTodaysRalli(): Promise<Dare | null> {
   const database = requireSupabase()
   // Nothing flips a Ralli's status when its clock runs out — ends_at is just a
-  // timestamp — so both queries have to exclude expired rows themselves.
+  // timestamp — so both queries have to exclude expired rows themselves. Run in
+  // parallel rather than falling back sequentially — that was the main source of
+  // this call's latency (a second round trip that fires almost every time, since
+  // there's rarely a Ralli active in the last 24h).
   const now = new Date().toISOString()
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const recent = await database.from('ralli_feed').select('*').eq('status', 'active')
-    .gt('ends_at', now)
-    .gte('created_at', cutoff).order('response_count', { ascending: false }).order('created_at', { ascending: false }).limit(1)
+  const [recent, fallback] = await Promise.all([
+    database.from('ralli_feed').select('*').eq('status', 'active')
+      .gt('ends_at', now)
+      .gte('created_at', cutoff).order('response_count', { ascending: false }).order('created_at', { ascending: false }).limit(1),
+    database.from('ralli_feed').select('*').eq('status', 'active')
+      .gt('ends_at', now)
+      .order('created_at', { ascending: false }).limit(1),
+  ])
   if (recent.error) throw recent.error
   if (recent.data?.[0]) return mapFeedRow(recent.data[0])
-
-  const fallback = await database.from('ralli_feed').select('*').eq('status', 'active')
-    .gt('ends_at', now)
-    .order('created_at', { ascending: false }).limit(1)
   if (fallback.error) throw fallback.error
   return fallback.data?.[0] ? mapFeedRow(fallback.data[0]) : null
 }
