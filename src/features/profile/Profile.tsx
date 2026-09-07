@@ -57,7 +57,7 @@ export function Profile() {
     setError('')
     try {
       const avatarPath = avatarFile ? await uploadAvatar(user.id, await optimizeAvatarImage(avatarFile)) : undefined
-      await updateMyProfile(user.id, { displayName, bio, handle: handle || null, ...(avatarPath ? { avatarPath } : {}) })
+      await updateMyProfile(user.id, { displayName, bio, handle: handle || null, markOnboarded: true, ...(avatarPath ? { avatarPath } : {}) })
       await load()
       setEditing(false)
       setAvatarFile(null)
