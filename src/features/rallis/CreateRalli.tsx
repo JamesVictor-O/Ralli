@@ -5,7 +5,7 @@ import { useWallet } from '../../store/wallet.ts'
 import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
 import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
-import { recordPaymentSubmission } from '../../lib/payments.ts'
+import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 const kickstartPresets = ['0', '5', '10', '25']
@@ -26,7 +26,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
   const [publishStage, setPublishStage] = useState<'wallet' | 'prepare' | 'cover' | 'publish'>('wallet')
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [fundingWarning, setFundingWarning] = useState('')
-  const [fundingState, setFundingState] = useState<'idle' | 'submitting' | 'funded'>('idle')
+  const [fundingState, setFundingState] = useState<'idle' | 'submitting' | 'confirming' | 'funded'>('idle')
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
   const coverOptimizationRef = useRef<Promise<File> | null>(null)
@@ -126,7 +126,17 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
       const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
       const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: reward, message: `Ralli reward: ${createdId}` })
       await recordPaymentSubmission({ kind: 'creator_reward', ralliId: createdId, amountLuna: nimToLuna(reward), transactionHash })
-      setFundingState('funded')
+      setFundingState('confirming')
+      try {
+        await confirmPayment({ kind: 'creator_reward', transactionHash })
+        setFundingState('funded')
+      } catch (confirmFailure) {
+        console.error('Kickstart confirmation failed', confirmFailure)
+        setFundingWarning('Your NIM is on the network but is taking longer than usual to confirm. It will still count once it settles — no need to send it again.')
+        setFundingState('funded')
+      }
+      // 'funded' from here on regardless of outcome: the transaction was sent either way, and
+      // fundCreatedRalli must never be called twice for it — the button below hides accordingly.
     } catch (fundingFailure) {
       setFundingWarning(fundingFailure instanceof Error ? fundingFailure.message : 'The Ralli is live, but its reward was not attached.')
       setFundingState('idle')
@@ -147,14 +157,14 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
           <span className="success-burst success-burst--violet" aria-hidden="true"><Check /></span>
           <p className="eyebrow">Your Ralli is live</p>
           <h1 id="created-title">Now pass it on.</h1>
-          <p>{fundingState === 'funded' ? `${reward} NIM was submitted to kickstart the pool.` : 'The pool starts at 0 — invite people, and the crowd can boost it from here.'}</p>
+          <p>{fundingState === 'confirming' ? 'Confirming your kickstart on-chain…' : fundingState === 'funded' ? `${reward} NIM was submitted to kickstart the pool.` : 'The pool starts at 0 — invite people, and the crowd can boost it from here.'}</p>
           {fundingWarning && <p className="payment-error" role="alert"><strong>Kickstart needs attention.</strong> {fundingWarning}</p>}
           <div className="success-actions">
             {reward && Number(reward) > 0 && fundingState !== 'funded' && (
-              <button className="button button--soft button--wide" type="button" disabled={fundingState === 'submitting'}
-                aria-busy={fundingState === 'submitting'} onClick={() => void fundCreatedRalli()}>
-                {fundingState === 'submitting' && <LoaderCircle className="spin" aria-hidden="true" />}
-                {fundingState === 'submitting' ? 'Waiting for approval…' : `Kickstart with ${reward} NIM`}
+              <button className="button button--soft button--wide" type="button" disabled={fundingState !== 'idle'}
+                aria-busy={fundingState !== 'idle'} onClick={() => void fundCreatedRalli()}>
+                {fundingState !== 'idle' && <LoaderCircle className="spin" aria-hidden="true" />}
+                {fundingState === 'submitting' ? 'Waiting for approval…' : fundingState === 'confirming' ? 'Confirming…' : `Kickstart with ${reward} NIM`}
               </button>
             )}
             <button className="button button--ink button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>

@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { Check, LoaderCircle, ShieldCheck, X, Zap } from 'lucide-react'
 import { useWallet } from '../../store/wallet.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
-import { recordPaymentSubmission } from '../../lib/payments.ts'
+import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
@@ -24,14 +24,14 @@ interface BoostProps {
 export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'this Ralli', pool = 0 }: BoostProps) {
   const { status, connect } = useWallet()
   const [amount, setAmount] = useState('2')
-  const [state, setState] = useState<'idle' | 'submitting' | 'success'>('idle')
+  const [state, setState] = useState<'idle' | 'submitting' | 'confirming' | 'success' | 'sent-unconfirmed'>('idle')
   const [error, setError] = useState('')
   const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
 
   useBodyScrollLock()
 
   useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && onClose()
+    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && state !== 'confirming' && onClose()
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose, state])
@@ -43,7 +43,14 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
     try {
       const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli boost: ${ralliId}` })
       await recordPaymentSubmission({ kind: 'boost', ralliId, amountLuna: nimToLuna(amount), transactionHash })
-      setState('success')
+      setState('confirming')
+      try {
+        await confirmPayment({ kind: 'boost', transactionHash })
+        setState('success')
+      } catch (confirmFailure) {
+        console.error('Boost confirmation failed', confirmFailure)
+        setState('sent-unconfirmed')
+      }
     } catch (paymentFailure) {
       setError(paymentError(paymentFailure))
       setState('idle')
@@ -55,13 +62,24 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
       <section className="payment-panel">
         <header className="wallet-panel__header">
           <div><p className="eyebrow">Add to the reward</p><h2 id="boost-title">Boost this Ralli</h2></div>
-          <button className="icon-button" type="button" aria-label="Close Boost" disabled={state === 'submitting'} onClick={onClose}><X aria-hidden="true" /></button>
+          <button className="icon-button" type="button" aria-label="Close Boost" disabled={state === 'submitting' || state === 'confirming'} onClick={onClose}><X aria-hidden="true" /></button>
         </header>
 
-        {state === 'success' ? (
+        {state === 'confirming' ? (
+          <div className="payment-success" aria-live="polite">
+            <span><LoaderCircle className="spin" aria-hidden="true" /></span><h3>Confirming on-chain…</h3>
+            <p>Your {amount} NIM boost is on its way. This usually takes a few seconds.</p>
+          </div>
+        ) : state === 'success' ? (
+          <div className="payment-success" aria-live="polite">
+            <span><Check aria-hidden="true" /></span><h3>Boost confirmed</h3>
+            <p>Your {amount} NIM is now counted in the reward pool.</p>
+            <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
+          </div>
+        ) : state === 'sent-unconfirmed' ? (
           <div className="payment-success" aria-live="polite">
             <span><Check aria-hidden="true" /></span><h3>Boost sent</h3>
-            <p>Your {amount} NIM transaction was submitted and its receipt is recorded for confirmation.</p>
+            <p>Your {amount} NIM transaction is on the network but is taking longer than usual to confirm. It'll count once it settles — no need to send it again.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : status !== 'connected' ? (

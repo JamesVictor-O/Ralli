@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { ChevronDown, Coins, LoaderCircle } from 'lucide-react'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
-import { recordPaymentSubmission } from '../../lib/payments.ts'
+import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useWallet } from '../../store/wallet.ts'
 
 const presetAmounts = ['1', '5', '10']
@@ -57,6 +57,12 @@ export function TipChip({ responseId, recipientAddress, author, initialTotal = 0
       const transactionHash = await sendNimPayment({ recipient: recipientAddress, amountNim: amount, message: `Ralli tip: ${responseId}` })
       await recordPaymentSubmission({ kind: 'tip', responseId, amountLuna: nimToLuna(amount), transactionHash })
       setTotal((value) => value + Number(amount))
+      // The chip already reflects the tip optimistically — this just makes it real in the
+      // database. A slow/failed confirmation here doesn't need to revert the total: the
+      // payment did go out, it just takes another look to actually count as confirmed.
+      confirmPayment({ kind: 'tip', transactionHash }).catch((confirmFailure) => {
+        console.error('Tip confirmation failed', confirmFailure)
+      })
     } catch (failure) {
       const message = tipError(failure)
       if (message) setError(message)
