@@ -77,9 +77,10 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
         {daily ? (
           <article className="community-daily">
             <div className="community-daily__copy"><span className="community-daily__label"><Sparkles aria-hidden="true" /> Community Daily Ralli</span>
-              <h3>{daily.prompt}</h3><p>{compact.format(daily.participants)} people have joined today.</p>
-              <div><button className="button button--ink" type="button" onClick={() => onJoinRalli(daily)}>Do today’s Ralli <ArrowRight aria-hidden="true" /></button>
-                <button className="text-button" type="button" onClick={() => onOpenRalli(daily)}>See responses</button></div>
+              <h3>{daily.prompt}</h3>
+              <p className="community-daily__participation"><UsersRound aria-hidden="true" /> {compact.format(daily.participants)} {daily.participants === 1 ? 'person has' : 'people have'} joined today</p>
+              <div><button className="button button--ink" type="button" onClick={() => onJoinRalli(daily)}>Join today’s Ralli <ArrowRight aria-hidden="true" /></button>
+                <button className="text-button" type="button" onClick={() => onOpenRalli(daily)}>See responses <ArrowRight aria-hidden="true" /></button></div>
             </div>
             <button className="community-daily__media" type="button" onClick={() => onOpenRalli(daily)} aria-label={`Open ${daily.prompt}`}>
               <img src={daily.image} alt={daily.imageAlt} width="720" height="520" decoding="async" />
