@@ -298,12 +298,13 @@ h3 { margin-bottom: 0; font-size: 19px; line-height: 1.25; letter-spacing: -.3px
 .daily-ralli__pills { display: flex; flex-wrap: wrap; gap: 7px; }
 .daily-ralli__kicker { margin-bottom: 10px; font-size: 11px; font-weight: 750; }
 .daily-ralli h2 { max-width: 15ch; margin: 0; font-size: clamp(29px, 3.5vw, 39px); line-height: 1.01; letter-spacing: -.045em; text-wrap: balance; }
-.daily-ralli__footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
-.daily-ralli__footer span { min-width: 0; display: flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 12px; font-style: normal; font-weight: 650; }
+.daily-ralli__content > div:last-child { display: grid; gap: 12px; }
+.daily-ralli__footer { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.daily-ralli__footer span { min-width: 0; display: flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 12px; font-style: normal; font-weight: 650; line-height: 1.35; }
 .daily-ralli__footer span svg { width: 15px; height: 15px; flex: 0 0 auto; }
 .daily-ralli__footer span strong { color: var(--ink); font-size: 13px; }
 .daily-ralli__footer span i { font-style: normal; }
-.daily-ralli__footer .button { min-height: 48px; padding-inline: 17px; white-space: nowrap; }
+.daily-ralli__footer .button { width: 100%; min-height: 48px; padding-inline: 17px; white-space: nowrap; }
 .daily-ralli--loading { background: var(--surface-soft); }
 @media (prefers-reduced-motion: no-preference) {
   .daily-ralli--loading { animation: feed-skeleton-pulse 1.2s ease-in-out infinite alternate; }
