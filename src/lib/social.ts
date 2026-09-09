@@ -9,6 +9,7 @@ export interface CreateRalliInput {
   prompt: string
   visibility: 'public' | 'friends'
   durationHours: number
+  communityId?: string | null
   cover?: File | null
   onStage?: (stage: 'wallet' | 'cover' | 'publish') => void
 }
@@ -32,6 +33,7 @@ export async function createRalli(input: CreateRalliInput) {
     prompt: input.prompt.trim(),
     description: '',
     category: input.visibility === 'friends' ? 'Invite only' : 'Just for fun',
+    community_id: input.communityId ?? null,
     cover_path: coverPath,
     ends_at: endsAt,
   }).select('id').single())
@@ -49,6 +51,9 @@ export interface CreateResponseInput {
 }
 
 export async function createResponse(input: CreateResponseInput) {
+  // Location is optional and cached. Start it alongside media work so a slow geo
+  // endpoint never adds another serial wait after the upload completes.
+  const geoPromise = fetchViewerGeo()
   let mediaPath: string | null = null
   if (input.media) {
     input.onStage?.('upload')
@@ -59,7 +64,7 @@ export async function createResponse(input: CreateResponseInput) {
     }
   }
   input.onStage?.('publish')
-  const geo = await fetchViewerGeo()
+  const geo = await geoPromise
   const { data, error } = await requireSupabase().from('responses').insert({
     ralli_id: input.ralliId,
     author_id: input.userId,

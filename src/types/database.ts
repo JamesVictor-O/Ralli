@@ -26,6 +26,7 @@ type RalliRow = {
   starts_at: string
   ends_at: string
   winner_response_id: string | null
+  community_id: string | null
   created_at: string
   updated_at: string
 }
@@ -53,6 +54,24 @@ type ActivityEventRow = { id: string; user_id: string; actor_id: string | null; 
 type ContentReportRow = { id: string; reporter_id: string; response_id: string; reason: Database['public']['Enums']['report_reason']; details: string; status: string; created_at: string }
 type UserBlockRow = { blocker_id: string; blocked_id: string; created_at: string }
 type RalliInvitationRow = { id: string; token: string; ralli_id: string; response_id: string | null; sender_id: string; recipient_id: string | null; status: Database['public']['Enums']['invitation_status']; opened_at: string | null; accepted_at: string | null; responded_at: string | null; created_at: string }
+type CommunityRow = { id: string; slug: string; name: string; icon: string; description: string; created_by: string | null; created_at: string; updated_at: string }
+type CommunityMemberRow = { community_id: string; user_id: string; role: Database['public']['Enums']['community_role']; joined_at: string }
+type CommunityDailyRalliRow = { community_id: string; ralli_id: string; active_date: string; created_at: string }
+
+export type CommunityDirectoryRow = {
+  id: string | null
+  slug: string | null
+  name: string | null
+  icon: string | null
+  description: string | null
+  created_at: string | null
+  member_count: number | null
+  ralli_count: number | null
+  response_count: number | null
+  reaction_count: number | null
+  pass_count: number | null
+  boost_total_luna: number | null
+}
 
 export type RalliFeedRow = {
   id: string | null
@@ -74,6 +93,7 @@ export type RalliFeedRow = {
   reaction_count: number | null
   pass_count: number | null
   boost_count: number | null
+  community_id: string | null
 }
 
 export interface Database {
@@ -143,12 +163,31 @@ export interface Database {
       }
       user_blocks: { Row: UserBlockRow; Insert: Pick<UserBlockRow, 'blocker_id' | 'blocked_id'>; Update: never; Relationships: [] }
       ralli_invitations: { Row: RalliInvitationRow; Insert: never; Update: never; Relationships: [] }
+      communities: {
+        Row: CommunityRow
+        Insert: Partial<Omit<CommunityRow, 'name' | 'slug' | 'description'>> & Pick<CommunityRow, 'name' | 'slug' | 'description'>
+        Update: Partial<Omit<CommunityRow, 'id' | 'created_at'>>
+        Relationships: []
+      }
+      community_members: {
+        Row: CommunityMemberRow
+        Insert: Pick<CommunityMemberRow, 'community_id' | 'user_id'> & Partial<Pick<CommunityMemberRow, 'role'>>
+        Update: never
+        Relationships: []
+      }
+      community_daily_rallis: {
+        Row: CommunityDailyRalliRow
+        Insert: Pick<CommunityDailyRalliRow, 'community_id' | 'ralli_id'> & Partial<Pick<CommunityDailyRalliRow, 'active_date'>>
+        Update: Pick<CommunityDailyRalliRow, 'ralli_id'>
+        Relationships: []
+      }
     }
     Views: {
       ralli_feed: {
         Row: RalliFeedRow
         Relationships: []
       }
+      community_directory: { Row: CommunityDirectoryRow; Relationships: [] }
     }
     Functions: {
       has_verified_nimiq_address: {
@@ -173,6 +212,7 @@ export interface Database {
       settlement_status: 'pending' | 'paying' | 'paid' | 'failed' | 'refunded'
       report_reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'
       invitation_status: 'shared' | 'opened' | 'accepted' | 'responded'
+      community_role: 'member' | 'moderator' | 'owner'
     }
     CompositeTypes: Record<never, never>
   }

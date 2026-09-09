@@ -3,7 +3,8 @@ import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, X } from 'l
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
-import { validateMedia } from '../../lib/media.ts'
+import { optimizeResponseImage, validateMedia } from '../../lib/media.ts'
+import { fetchViewerGeo } from '../../lib/geo.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { PassItOn } from '../chains/PassItOn.tsx'
 import { actionableError } from '../../lib/errors.ts'
@@ -21,14 +22,18 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
   const [caption, setCaption] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [media, setMedia] = useState<File | null>(null)
+  const [mediaPreparing, setMediaPreparing] = useState(false)
+  const [mediaSavings, setMediaSavings] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [submitStage, setSubmitStage] = useState<'wallet' | 'upload' | 'publish'>('wallet')
+  const [submitStage, setSubmitStage] = useState<'wallet' | 'prepare' | 'upload' | 'publish'>('wallet')
   const [responseId, setResponseId] = useState<string | null>(null)
   const [passOpen, setPassOpen] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
+  const mediaOptimizationRef = useRef<Promise<File> | null>(null)
+  const mediaSelectionRef = useRef(0)
   const { status: backendStatus, user, error: backendError } = useBackend()
   const { account } = useWallet()
 
@@ -42,6 +47,12 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
+  useEffect(() => {
+    // This request is read-only and optional. Starting it while the response sheet
+    // is open removes a network round trip from the eventual publish path.
+    void fetchViewerGeo()
+  }, [])
+
   function chooseMedia(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -52,7 +63,30 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
       if (preview) URL.revokeObjectURL(preview)
       setMedia(file)
       setPreview(URL.createObjectURL(file))
+      setMediaSavings('')
       setError('')
+      const selection = mediaSelectionRef.current + 1
+      mediaSelectionRef.current = selection
+      if (file.type.startsWith('image/')) {
+        setMediaPreparing(true)
+        const optimization = optimizeResponseImage(file)
+        mediaOptimizationRef.current = optimization
+        void optimization.then((optimized) => {
+          if (mediaSelectionRef.current !== selection) return
+          setMedia(optimized)
+          if (optimized.size < file.size) {
+            const reduction = Math.round((1 - optimized.size / file.size) * 100)
+            setMediaSavings(`${reduction}% smaller for a faster post`)
+          }
+        }).catch(() => {
+          if (mediaSelectionRef.current === selection) setMedia(file)
+        }).finally(() => {
+          if (mediaSelectionRef.current === selection) setMediaPreparing(false)
+        })
+      } else {
+        mediaOptimizationRef.current = null
+        setMediaPreparing(false)
+      }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'That media could not be used.')
       event.target.value = ''
@@ -72,7 +106,9 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
     setSubmitStage('wallet')
     try {
       await ensureWalletAttached(user.id, account)
-      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media, onStage: setSubmitStage })
+      if (mediaOptimizationRef.current && mediaPreparing) setSubmitStage('prepare')
+      const preparedMedia = mediaOptimizationRef.current ? await mediaOptimizationRef.current.catch(() => media) : media
+      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: preparedMedia, onStage: setSubmitStage })
       setResponseId(createdResponseId)
       setSubmitted(true)
       onPosted?.()
@@ -123,7 +159,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
             { value: 'video' as const, icon: Video, label: 'Video' },
             { value: 'text' as const, icon: Type, label: 'Text' },
           ].map(({ value, icon: Icon, label }) => (
-            <button className={format === value ? 'is-active' : ''} type="button" key={value} onClick={() => { setFormat(value); setMedia(null); setPreview(null); setError('') }}>
+            <button className={format === value ? 'is-active' : ''} type="button" key={value} onClick={() => { setFormat(value); setMedia(null); setPreview(null); setMediaSavings(''); mediaOptimizationRef.current = null; setError('') }}>
               <Icon aria-hidden="true" /><span>{label}</span>
             </button>
           ))}
@@ -141,6 +177,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
               <input className="sr-only" ref={libraryRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/*'} onChange={chooseMedia} />
               {preview ? (format === 'photo' ? <img className="capture-preview" src={preview} alt="Response preview" /> : <video className="capture-preview" src={preview} controls />) : <span className="capture-icon">{format === 'photo' ? <Camera aria-hidden="true" /> : <Video aria-hidden="true" />}</span>}
               <div><strong>{format === 'photo' ? 'Take a photo' : 'Record a video'}</strong><p>Use your camera or choose something you already captured.</p></div>
+              {media && <p className="capture-preparation" role="status">{mediaPreparing ? 'Preparing a faster upload…' : mediaSavings || (format === 'video' ? 'Video ready to upload' : 'Photo ready to post')}</p>}
               <div className="capture-actions">
                 <button className="button button--ink" type="button" onClick={() => cameraRef.current?.click()}><Camera aria-hidden="true" />Open camera</button>
                 <button className="button button--soft" type="button" onClick={() => libraryRef.current?.click()}><Image aria-hidden="true" />Choose media</button>
@@ -159,7 +196,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
         <footer className="flow-actions flow-actions--static">
           <p>Posting does not trigger a wallet transaction.</p>
           <button className="button button--ink button--wide" type="button" disabled={submitting} aria-busy={submitting} onClick={() => void submitResponse()}>
-            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'upload' ? 'Uploading response…' : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
+            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'prepare' ? 'Preparing photo…' : submitStage === 'upload' ? 'Uploading response…' : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
           </button>
         </footer>
       </section>

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, ChevronRight, HandCoins, Home, Plus, Search,
+  Bell, ChevronRight, HandCoins, Home, Plus, Search, UsersRound,
   Sparkles, UserRound, WalletCards, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
@@ -28,9 +28,11 @@ const WalletPanel = lazy(() => import('../components/navigation/WalletPanel.tsx'
 const SearchPanel = lazy(() => import('../features/discover/SearchPanel.tsx').then((module) => ({ default: module.SearchPanel })))
 const Boost = lazy(() => import('../features/rewards/Boost.tsx').then((module) => ({ default: module.Boost })))
 const InvitationPrompt = lazy(() => import('../features/chains/InvitationPrompt.tsx').then((module) => ({ default: module.InvitationPrompt })))
+const CommunityHub = lazy(() => import('../features/communities/CommunityHub.tsx').then((module) => ({ default: module.CommunityHub })))
 
 const navItems = [
   { label: 'Discover', icon: Home },
+  { label: 'Communities', icon: UsersRound },
   { label: 'Activity', icon: Bell },
   { label: 'Create', icon: Plus, primary: true },
   { label: 'Chains', icon: Zap },
@@ -40,7 +42,7 @@ const navItems = [
 export default function App() {
   const [showSplash, setShowSplash] = useState(true)
   const reduceMotion = useReducedMotion()
-  const [activeNav, setActiveNav] = useState('Discover')
+  const [activeNav, setActiveNav] = useState(() => new URLSearchParams(window.location.search).has('community') ? 'Communities' : 'Discover')
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
   const [selectedRalli, setSelectedRalli] = useState<Dare | null>(null)
   const [feedRefreshKey, setFeedRefreshKey] = useState(0)
@@ -50,6 +52,8 @@ export default function App() {
   const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
   const [invitation, setInvitation] = useState<InvitationPreview | null>(null)
   const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [communitySlug, setCommunitySlug] = useState<string | null>(() => new URLSearchParams(window.location.search).get('community'))
+  const [createCommunity, setCreateCommunity] = useState<{ id: string; name: string; icon: string } | null>(null)
   const { status: walletStatus, account } = useWallet()
   const { user } = useBackend()
   const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
@@ -114,6 +118,19 @@ export default function App() {
     openRalli(ralli)
   }
 
+  function openCommunity(slug: string | null) {
+    setCommunitySlug(slug)
+    const url = new URL(window.location.href)
+    if (slug) url.searchParams.set('community', slug)
+    else url.searchParams.delete('community')
+    window.history.replaceState({}, '', url)
+  }
+
+  function startCommunityRalli(community: { id: string; name: string; icon: string }) {
+    setCreateCommunity(community)
+    setActiveFlow('create')
+  }
+
   return (
     <>
     <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -141,6 +158,7 @@ export default function App() {
                 type="button" aria-current={isActive ? 'page' : undefined}
                 onClick={() => {
                   setActiveFlow(null)
+                  if (item.label !== 'Communities') openCommunity(null)
                   setActiveNav(item.label)
                 }}>
                 <span className="icon-with-badge"><Icon aria-hidden="true" />{item.label === 'Activity' && unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span><span>{item.label}</span>
@@ -148,7 +166,7 @@ export default function App() {
             )
           })}
         </nav>
-        <button className="create-button" type="button" onClick={() => setActiveFlow('create')}><Plus aria-hidden="true" /><span>Start a Ralli</span></button>
+        <button className="create-button" type="button" onClick={() => { setCreateCommunity(null); setActiveFlow('create') }}><Plus aria-hidden="true" /><span>Start a Ralli</span></button>
         <button className="profile-chip" type="button" onClick={() => setWalletOpen(true)}>
           <Avatar initials={myProfile?.initials ?? 'RA'} avatarUrl={myProfile?.avatarUrl} className="avatar--me" />
           <span><strong>{myProfile?.displayName ?? (account ? 'Nimiq connected' : 'Your Ralli profile')}</strong><small>{account ? `${account.slice(0, 7)}…${account.slice(-4)}` : 'Connect Nimiq wallet'}</small></span>
@@ -192,8 +210,9 @@ export default function App() {
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
         </div>
-        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => setActiveFlow('create')} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
+        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => { setCreateCommunity(null); setActiveFlow('create') }} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
         </>)}
+        {activeNav === 'Communities' && <CommunityHub initialSlug={communitySlug} onSlugChange={openCommunity} onOpenRalli={(ralli) => openRalli(ralli)} onJoinRalli={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={startCommunityRalli} />}
         {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli)} onRead={() => void refreshUnreadActivity()} />}
         {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli)} />}
         {activeNav === 'Me' && <Profile />}
@@ -207,7 +226,7 @@ export default function App() {
             <span className="rail-icon rail-icon--violet"><Sparkles aria-hidden="true" /></span>
           </div>
           <p>Create a challenge, optionally fund it with NIM, then pass it into the community.</p>
-          <button className="text-button" type="button" onClick={() => setActiveFlow('create')}>Start a Ralli <ChevronRight aria-hidden="true" /></button>
+          <button className="text-button" type="button" onClick={() => { setCreateCommunity(null); setActiveFlow('create') }}>Start a Ralli <ChevronRight aria-hidden="true" /></button>
         </div>
         <div className="rail-card">
           <div className="rail-card__heading">
@@ -227,7 +246,7 @@ export default function App() {
         <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
       )}
       {activeFlow === 'create' && (
-        <CreateRalli onClose={() => setActiveFlow(null)} onCreated={(id) => {
+        <CreateRalli community={createCommunity} onClose={() => { setActiveFlow(null); setCreateCommunity(null) }} onCreated={(id) => {
           setFeedRefreshKey((value) => value + 1)
           void fetchRalliById(id).then(setSelectedRalli)
         }} />
@@ -248,9 +267,11 @@ export default function App() {
               key={item.label} type="button" aria-label={item.primary ? 'Start a Ralli' : item.label}
               aria-current={isActive ? 'page' : undefined} onClick={() => {
                 if (item.primary) {
+                  setCreateCommunity(null)
                   setActiveFlow('create')
                 } else {
                   setActiveFlow(null)
+                  if (item.label !== 'Communities') openCommunity(null)
                   setActiveNav(item.label)
                 }
               }}>

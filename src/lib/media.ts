@@ -6,6 +6,8 @@ const MAX_VIDEO_BYTES = 50 * 1024 * 1024
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
 const COVER_MAX_DIMENSION = 1600
 const COVER_WEBP_QUALITY = 0.82
+const RESPONSE_MAX_DIMENSION = 1440
+const RESPONSE_WEBP_QUALITY = 0.8
 const AVATAR_DIMENSION = 512
 const AVATAR_WEBP_QUALITY = 0.85
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024
@@ -36,6 +38,31 @@ export async function optimizeCoverImage(file: File) {
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', COVER_WEBP_QUALITY))
     if (!blob || blob.size >= file.size) return file
     const baseName = file.name.replace(/\.[^.]+$/, '') || 'ralli-cover'
+    return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() })
+  } finally {
+    bitmap.close()
+  }
+}
+
+export async function optimizeResponseImage(file: File) {
+  validateMedia(file, 'response')
+  if (!file.type.startsWith('image/')) return file
+  if (file.type === 'image/webp' && file.size <= 1_250_000) return file
+
+  const bitmap = await createImageBitmap(file)
+  try {
+    const scale = Math.min(1, RESPONSE_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) return file
+    context.drawImage(bitmap, 0, 0, width, height)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', RESPONSE_WEBP_QUALITY))
+    if (!blob || blob.size >= file.size) return file
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'ralli-response'
     return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() })
   } finally {
     bitmap.close()

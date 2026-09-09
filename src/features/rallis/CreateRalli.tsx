@@ -7,7 +7,11 @@ import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
 
-export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCreated?: (id: string) => void }) {
+export function CreateRalli({ onClose, onCreated, community }: {
+  onClose: () => void
+  onCreated?: (id: string) => void
+  community?: { id: string; name: string; icon: string } | null
+}) {
   const [step, setStep] = useState<'form' | 'success'>('form')
   const [prompt, setPrompt] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'friends'>('public')
@@ -101,6 +105,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
         prompt,
         visibility,
         durationHours: Number(duration),
+        communityId: community?.id,
         cover: preparedCover,
         onStage: setPublishStage,
       })
@@ -156,9 +161,9 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
           <button className="icon-button" type="button" aria-label="Close Ralli creator" onClick={onClose}><X aria-hidden="true" /></button>
         </header>
         <div className="flow-intro">
-          <p className="eyebrow">Start something</p>
+          <p className="eyebrow">{community ? `${community.icon} For ${community.name}` : 'Start something'}</p>
           <h1 id="create-title">Create a Ralli</h1>
-          <p>Give people one simple, irresistible thing to do.</p>
+          <p>{community ? `Give people in ${community.name} one simple, irresistible thing to do.` : 'Give people one simple, irresistible thing to do.'}</p>
         </div>
         <form className="create-form" onSubmit={submit} noValidate>
           <div className="field">
