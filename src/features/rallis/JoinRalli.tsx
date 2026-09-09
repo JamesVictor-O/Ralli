@@ -3,7 +3,7 @@ import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, X } from 'l
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
-import { optimizeResponseImage, validateMedia } from '../../lib/media.ts'
+import { isImageFile, isVideoFile, optimizeResponseImage, validateMedia } from '../../lib/media.ts'
 import { fetchViewerGeo } from '../../lib/geo.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { PassItOn } from '../chains/PassItOn.tsx'
@@ -58,8 +58,8 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
     if (!file) return
     try {
       validateMedia(file, 'response')
-      if (format === 'photo' && !file.type.startsWith('image/')) throw new Error('Choose a photo for this response.')
-      if (format === 'video' && !file.type.startsWith('video/')) throw new Error('Choose a video for this response.')
+      if (format === 'photo' && !isImageFile(file)) throw new Error('Choose a photo for this response.')
+      if (format === 'video' && !isVideoFile(file)) throw new Error('Choose a video for this response.')
       if (preview) URL.revokeObjectURL(preview)
       setMedia(file)
       setPreview(URL.createObjectURL(file))
@@ -67,7 +67,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
       setError('')
       const selection = mediaSelectionRef.current + 1
       mediaSelectionRef.current = selection
-      if (file.type.startsWith('image/')) {
+      if (isImageFile(file)) {
         setMediaPreparing(true)
         const optimization = optimizeResponseImage(file)
         mediaOptimizationRef.current = optimization
@@ -173,8 +173,8 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
             </div>
           ) : (
             <>
-              <input className="sr-only" ref={cameraRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/*'} capture="environment" onChange={chooseMedia} />
-              <input className="sr-only" ref={libraryRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/*'} onChange={chooseMedia} />
+              <input className="sr-only" ref={cameraRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/*,.mov,.m4v'} capture="environment" onChange={chooseMedia} />
+              <input className="sr-only" ref={libraryRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v'} onChange={chooseMedia} />
               {preview ? (format === 'photo' ? <img className="capture-preview" src={preview} alt="Response preview" /> : <video className="capture-preview" src={preview} controls />) : <span className="capture-icon">{format === 'photo' ? <Camera aria-hidden="true" /> : <Video aria-hidden="true" />}</span>}
               <div><strong>{format === 'photo' ? 'Take a photo' : 'Record a video'}</strong><p>Use your camera or choose something you already captured.</p></div>
               {media && <p className="capture-preparation" role="status">{mediaPreparing ? 'Preparing a faster upload…' : mediaSavings || (format === 'video' ? 'Video ready to upload' : 'Photo ready to post')}</p>}
