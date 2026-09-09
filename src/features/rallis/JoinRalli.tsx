@@ -5,6 +5,8 @@ import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
 import { validateMedia } from '../../lib/media.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
+import { PassItOn } from '../chains/PassItOn.tsx'
+import { actionableError } from '../../lib/errors.ts'
 
 interface JoinRalliProps {
   ralliId: string
@@ -22,6 +24,9 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitStage, setSubmitStage] = useState<'wallet' | 'upload' | 'publish'>('wallet')
+  const [responseId, setResponseId] = useState<string | null>(null)
+  const [passOpen, setPassOpen] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
   const { status: backendStatus, user, error: backendError } = useBackend()
@@ -64,16 +69,18 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
     if (format !== 'text' && !media) return setError(`Take or choose a ${format} before posting.`)
     setError('')
     setSubmitting(true)
+    setSubmitStage('wallet')
     try {
       await ensureWalletAttached(user.id, account)
-      await createResponse({ userId: user.id, ralliId, format, text: caption, media })
+      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media, onStage: setSubmitStage })
+      setResponseId(createdResponseId)
       setSubmitted(true)
       onPosted?.()
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : 'Your response could not be posted.'
       if (/one_response_per_ralli|duplicate key/i.test(message)) setError('You already responded to this Ralli.')
       else if (/ralli_expired/i.test(message)) setError('This Ralli has ended — it can no longer accept responses.')
-      else setError(message)
+      else setError(actionableError(failure, 'Your response could not be posted. Try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -87,7 +94,11 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
           <p className="eyebrow">You joined the Ralli</p>
           <h1 id="joined-title">That’s in the chain.</h1>
           <p>Your response is ready. Pass it to someone and keep the Ralli moving.</p>
-          <button className="button button--ink button--wide" type="button" onClick={onClose}>Back to Discover</button>
+          <div className="success-actions">
+            <button className="button button--ink button--wide" type="button" onClick={() => setPassOpen(true)}>Pass it on</button>
+            <button className="button button--soft button--wide" type="button" onClick={onClose}>Back to Discover</button>
+          </div>
+          {passOpen && responseId && <PassItOn ralliId={ralliId} responseId={responseId} prompt={prompt} responseAuthor="You" onClose={() => setPassOpen(false)} />}
         </section>
       </div>
     )
@@ -148,7 +159,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
         <footer className="flow-actions flow-actions--static">
           <p>Posting does not trigger a wallet transaction.</p>
           <button className="button button--ink button--wide" type="button" disabled={submitting} aria-busy={submitting} onClick={() => void submitResponse()}>
-            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? 'Uploading response…' : 'Post response'}
+            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'upload' ? 'Uploading response…' : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
           </button>
         </footer>
       </section>

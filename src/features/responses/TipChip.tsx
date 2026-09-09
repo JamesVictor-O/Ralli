@@ -3,12 +3,13 @@ import { ChevronDown, Coins, LoaderCircle } from 'lucide-react'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useWallet } from '../../store/wallet.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 const presetAmounts = ['1', '5', '10']
 
 function tipError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
-  return /reject|declin|cancel|denied/i.test(message) ? null : message
+  return /reject|declin|cancel|denied/i.test(message) ? null : actionableError(error, 'The tip could not be sent. No NIM was deducted—try again.')
 }
 
 interface TipChipProps {
@@ -40,7 +41,11 @@ export function TipChip({ responseId, recipientAddress, author, initialTotal = 0
   }, [])
 
   async function send(amount: string) {
-    if (sending || !recipientAddress || Number(amount) <= 0) return
+    if (sending || !recipientAddress) return
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+      setError('Enter a NIM amount greater than zero.')
+      return
+    }
     setPickerOpen(false)
     setCustomOpen(false)
     setError('')
@@ -50,6 +55,7 @@ export function TipChip({ responseId, recipientAddress, author, initialTotal = 0
       } catch {
         // connect() already records a wallet-level error; nothing more to do here.
       }
+      setError('Wallet connected. Tap the tip amount again to approve the payment.')
       return
     }
     setSending(true)

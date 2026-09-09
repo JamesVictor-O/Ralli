@@ -3,6 +3,7 @@ import { setReaction } from '../../lib/responses.ts'
 import { ensureVerifiedProfile } from '../../lib/social.ts'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 const reactionOptions = [
   { emoji: '😂', label: 'Funny' },
@@ -25,7 +26,11 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
   const { account } = useWallet()
 
   async function react(label: string) {
-    if (!user || saving) return
+    if (saving) return
+    if (!user) {
+      setError('Ralli is still connecting. Wait a moment, then try again.')
+      return
+    }
     const previous = selected
     const previousCount = count
     const next = previous === label ? null : label
@@ -39,7 +44,7 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
     } catch (failure) {
       setSelected(previous)
       setCount(previousCount)
-      setError(failure instanceof Error ? failure.message : 'Reaction could not be saved.')
+      setError(actionableError(failure, 'Your reaction could not be saved. Try again.'))
     } finally {
       setSaving(false)
     }
@@ -56,7 +61,7 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
         </button>
       ))}
       <span className="reaction-total">{count}</span>
-      {error && <span className="sr-only" role="alert">{error}</span>}
+      {error && <span className="reaction-error" role="alert">{error}</span>}
     </div>
   )
 }

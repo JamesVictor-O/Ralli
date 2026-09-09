@@ -6,6 +6,7 @@ import { ensureWalletAttached } from '../../lib/social.ts'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 interface PassItOnProps {
   ralliId: string
@@ -20,6 +21,7 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   const [shared, setShared] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [shareCompleted, setShareCompleted] = useState(false)
   const { user } = useBackend()
   const { account } = useWallet()
   const ralliUrl = `${window.location.origin}${window.location.pathname}?ralli=${ralliId}`
@@ -43,15 +45,22 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     if (!user) return setError('Ralli is still connecting. Try again in a moment.')
     setSaving(true)
     setError('')
+    let didShare = shareCompleted
     try {
       await ensureWalletAttached(user.id, account)
-      if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} joined “${prompt}”`, url: ralliUrl })
-      else await copyLink()
+      if (!shareCompleted) {
+        if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} joined “${prompt}”`, url: ralliUrl })
+        else await copyLink()
+        setShareCompleted(true)
+        didShare = true
+      }
       await recordPass(ralliId, responseId, user.id)
       setShared(true)
     } catch (failure) {
       if (failure instanceof Error && failure.name === 'AbortError') return
-      setError(failure instanceof Error ? failure.message : 'This Ralli could not be passed on.')
+      setError(didShare
+        ? 'Your invite was shared, but its chain link was not recorded. Retry to record it without sharing again.'
+        : actionableError(failure, 'This Ralli could not be passed on. Try again.'))
     } finally {
       setSaving(false)
     }
@@ -67,7 +76,7 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
           {error && <p className="payment-error" role="alert">{error}</p>}
           <button className="button button--ink button--wide pass-share" type="button" disabled={saving} aria-busy={saving} onClick={() => void shareRalli()}>
             {saving ? <LoaderCircle className="spin" aria-hidden="true" /> : nativeShare ? <Share2 aria-hidden="true" /> : <Send aria-hidden="true" />}
-            {saving ? 'Recording pass…' : nativeShare ? 'Open share sheet' : 'Copy and record pass'}
+            {saving ? 'Recording pass…' : shareCompleted ? 'Retry chain recording' : nativeShare ? 'Open share sheet' : 'Copy and record pass'}
           </button>
         </>}
       </section>

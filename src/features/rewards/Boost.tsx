@@ -4,13 +4,12 @@ import { useWallet } from '../../store/wallet.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
 
 function paymentError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-  if (/reject|declin|cancel|denied/i.test(message)) return 'Payment cancelled. No NIM was sent.'
-  return message
+  return actionableError(error, 'The boost could not be sent. No NIM was deducted—try again.')
 }
 
 interface BoostProps {
@@ -38,6 +37,10 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+      setError('Enter a NIM amount greater than zero.')
+      return
+    }
     setError('')
     setState('submitting')
     try {

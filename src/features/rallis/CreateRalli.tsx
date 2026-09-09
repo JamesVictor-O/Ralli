@@ -7,6 +7,7 @@ import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 const kickstartPresets = ['0', '5', '10', '25']
 
@@ -27,12 +28,14 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [fundingWarning, setFundingWarning] = useState('')
   const [fundingState, setFundingState] = useState<'idle' | 'submitting' | 'confirming' | 'funded'>('idle')
+  const [shareStatus, setShareStatus] = useState('')
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
   const coverOptimizationRef = useRef<Promise<File> | null>(null)
   const coverSelectionRef = useRef(0)
   const { status: backendStatus, user, error: backendError, retry: retryBackend } = useBackend()
   const { account } = useWallet()
+  const promptInvalid = Boolean(error) && prompt.trim().length < 10
 
   useBodyScrollLock()
 
@@ -112,7 +115,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
       onCreated?.(id)
       setStep('success')
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Your Ralli could not be created.')
+      setError(actionableError(failure, 'Your Ralli could not be created. Your draft is still here—try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -145,9 +148,18 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
 
   async function shareCreatedRalli() {
     if (!createdId) return
+    setShareStatus('')
     const url = `${window.location.origin}${window.location.pathname}?ralli=${createdId}`
-    if (navigator.share) await navigator.share({ title: prompt, text: 'Join my Ralli', url }).catch(() => undefined)
-    else await navigator.clipboard.writeText(url)
+    try {
+      if (navigator.share) await navigator.share({ title: prompt, text: 'Join my Ralli', url })
+      else {
+        await navigator.clipboard.writeText(url)
+        setShareStatus('Invite link copied.')
+      }
+    } catch (failure) {
+      if (failure instanceof Error && failure.name === 'AbortError') return
+      setShareStatus(actionableError(failure, 'The invite could not be shared. Try copying it again.'))
+    }
   }
 
   if (step === 'success') {
@@ -168,6 +180,7 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
               </button>
             )}
             <button className="button button--ink button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>
+            {shareStatus && <p className="inline-status" role="status">{shareStatus}</p>}
             <button className="button button--soft button--wide" type="button" onClick={onClose}>Back to Discover</button>
           </div>
         </section>
@@ -192,12 +205,12 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
             <label htmlFor="ralli-prompt">The challenge <span>Required</span></label>
             <textarea ref={promptRef} id="ralli-prompt" rows={4} maxLength={140}
               placeholder="Show us the best view from your city."
-              aria-invalid={error ? 'true' : undefined}
-              aria-describedby={error ? 'ralli-prompt-error' : 'ralli-prompt-hint'}
-              value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+              aria-invalid={promptInvalid ? 'true' : undefined}
+              aria-describedby={promptInvalid ? 'ralli-prompt-error' : 'ralli-prompt-hint'}
+              value={prompt} onChange={(event) => { setPrompt(event.target.value); if (promptInvalid) setError('') }} />
             <div className="field-meta">
-              <small id={error ? 'ralli-prompt-error' : 'ralli-prompt-hint'} className={error ? 'field-error' : ''}>
-                {error || 'Make it clear enough to understand in one glance.'}
+              <small id={promptInvalid ? 'ralli-prompt-error' : 'ralli-prompt-hint'} className={promptInvalid ? 'field-error' : ''}>
+                {promptInvalid ? error : 'Make it clear enough to understand in one glance.'}
               </small>
               <small>{prompt.length}/140</small>
             </div>
@@ -257,6 +270,8 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
               <p><strong>You’ll approve this separately.</strong><span>Nimiq Pay will ask you to confirm the {reward} NIM kickstart after the Ralli is created.</span></p>
             </div>
           )}
+
+          {error && !promptInvalid && <p className="payment-error" role="alert">{error}</p>}
 
           <footer className="flow-actions flow-actions--static">
             <p>You can edit the description after publishing.</p>

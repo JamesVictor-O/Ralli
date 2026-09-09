@@ -40,7 +40,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
       </div>
       <h3 className="dare-card__title">{dare.prompt}</h3>
       <div className="dare-card__media">
-        <img src={dare.image} alt={dare.imageAlt} width="720" height="520" />
+        <img src={dare.image} alt={dare.imageAlt} width="720" height="520" loading="lazy" decoding="async" />
         <div className="media-badge"><UsersRound aria-hidden="true" /><span><strong>{dare.participants}</strong> responses</span></div>
       </div>
       <div className="dare-card__meta">

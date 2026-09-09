@@ -45,11 +45,20 @@ export interface CreateResponseInput {
   format: 'photo' | 'video' | 'text'
   text: string
   media?: File | null
+  onStage?: (stage: 'upload' | 'publish') => void
 }
 
 export async function createResponse(input: CreateResponseInput) {
   let mediaPath: string | null = null
-  if (input.media) mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media)
+  if (input.media) {
+    input.onStage?.('upload')
+    try {
+      mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media)
+    } catch (error) {
+      throw new Error(friendlyNetworkError(error, 'uploading your response'), { cause: error })
+    }
+  }
+  input.onStage?.('publish')
   const geo = await fetchViewerGeo()
   const { data, error } = await requireSupabase().from('responses').insert({
     ralli_id: input.ralliId,
@@ -61,7 +70,7 @@ export async function createResponse(input: CreateResponseInput) {
     country: geo.country,
     flag: geo.flag,
   }).select('id').single()
-  if (error) throw error
+  if (error) throw new Error(friendlyNetworkError(error, 'publishing your response'), { cause: error })
   return data.id
 }
 

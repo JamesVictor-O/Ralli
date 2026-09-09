@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Bell, ChevronRight, HandCoins, Home, Plus, Search,
@@ -7,24 +7,25 @@ import {
 import { DareFeed } from '../features/discover/DareFeed.tsx'
 import { TodaysRalli } from '../features/discover/TodaysRalli.tsx'
 import type { Dare } from '../features/discover/DareCard.tsx'
-import { RalliDetail } from '../features/rallis/RalliDetail.tsx'
-import { CreateRalli } from '../features/rallis/CreateRalli.tsx'
-import { JoinRalli } from '../features/rallis/JoinRalli.tsx'
-import { Activity } from '../features/activity/Activity.tsx'
-import { RalliChain } from '../features/chains/RalliChain.tsx'
-import { Profile } from '../features/profile/Profile.tsx'
-import { Onboarding } from '../features/onboarding/Onboarding.tsx'
-import { WalletPanel } from '../components/navigation/WalletPanel.tsx'
 import { Avatar } from '../components/ui/Avatar.tsx'
 import { useWallet } from '../store/wallet.ts'
 import { useBackend } from '../store/backend.ts'
 import { useMyProfileSummary } from '../hooks/useMyProfileSummary.ts'
 import { useUnreadActivityCount } from '../hooks/useUnreadActivityCount.ts'
-import { SearchPanel } from '../features/discover/SearchPanel.tsx'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
-import { Boost } from '../features/rewards/Boost.tsx'
 import { fetchRalliById } from '../lib/rallis.ts'
 import '../styles/index.css'
+
+const Activity = lazy(() => import('../features/activity/Activity.tsx').then((module) => ({ default: module.Activity })))
+const RalliChain = lazy(() => import('../features/chains/RalliChain.tsx').then((module) => ({ default: module.RalliChain })))
+const Profile = lazy(() => import('../features/profile/Profile.tsx').then((module) => ({ default: module.Profile })))
+const RalliDetail = lazy(() => import('../features/rallis/RalliDetail.tsx').then((module) => ({ default: module.RalliDetail })))
+const CreateRalli = lazy(() => import('../features/rallis/CreateRalli.tsx').then((module) => ({ default: module.CreateRalli })))
+const JoinRalli = lazy(() => import('../features/rallis/JoinRalli.tsx').then((module) => ({ default: module.JoinRalli })))
+const Onboarding = lazy(() => import('../features/onboarding/Onboarding.tsx').then((module) => ({ default: module.Onboarding })))
+const WalletPanel = lazy(() => import('../components/navigation/WalletPanel.tsx').then((module) => ({ default: module.WalletPanel })))
+const SearchPanel = lazy(() => import('../features/discover/SearchPanel.tsx').then((module) => ({ default: module.SearchPanel })))
+const Boost = lazy(() => import('../features/rewards/Boost.tsx').then((module) => ({ default: module.Boost })))
 
 const navItems = [
   { label: 'Discover', icon: Home },
@@ -95,6 +96,7 @@ export default function App() {
 
   return (
     <>
+    <a className="skip-link" href="#main-content">Skip to main content</a>
     <AnimatePresence mode="wait">
       {showSplash ? (
         <SplashScreen key="splash" onComplete={finishSplash} />
@@ -134,7 +136,7 @@ export default function App() {
         </button>
       </aside>
 
-      <main className="main-column">
+      <main className="main-column" id="main-content" tabIndex={-1}>
         <header className="mobile-header">
           <a className="brand" href="/" aria-label="Ralli home">
             <img className="brand-mark" src="/railIcon.png" width="1254" height="1254" alt="" /><span>ralli</span>
@@ -197,6 +199,7 @@ export default function App() {
       </aside>
       )}
 
+      <Suspense fallback={<div className="route-loader" role="status">Loading…</div>}>
       {activeFlow === 'detail' && selectedRalli && (
         <RalliDetail ralli={selectedRalli} onClose={closeRalliFlow} onJoin={() => setActiveFlow('join')} />
       )}
@@ -213,6 +216,7 @@ export default function App() {
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
       {boostTarget && <Boost ralliId={boostTarget.id} creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
+      </Suspense>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {navItems.map((item) => {

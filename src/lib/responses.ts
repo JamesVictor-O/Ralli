@@ -95,3 +95,13 @@ export async function recordPass(ralliId: string, responseId: string | null, use
   if (error) throw error
   return data.share_code
 }
+
+export async function reportResponse(responseId: string, reporterId: string, reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other') {
+  const { error } = await requireSupabase().from('content_reports').insert({
+    response_id: responseId,
+    reporter_id: reporterId,
+    reason,
+  })
+  if (error?.code === '23505') return
+  if (error) throw error
+}

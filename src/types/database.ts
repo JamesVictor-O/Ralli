@@ -50,6 +50,7 @@ type RalliPassRow = { id: string; ralli_id: string; response_id: string | null; 
 type PoolContributionRow = { id: string; ralli_id: string; contributor_id: string; kind: Database['public']['Enums']['contribution_kind']; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
 type ResponseTipRow = { id: string; response_id: string; sender_id: string; recipient_id: string; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
 type ActivityEventRow = { id: string; user_id: string; actor_id: string | null; ralli_id: string | null; response_id: string | null; kind: string; payload: Json; read_at: string | null; created_at: string }
+type ContentReportRow = { id: string; reporter_id: string; response_id: string; reason: Database['public']['Enums']['report_reason']; details: string; status: string; created_at: string }
 
 export type RalliFeedRow = {
   id: string | null
@@ -132,6 +133,12 @@ export interface Database {
         Update: Pick<ActivityEventRow, 'read_at'>
         Relationships: []
       }
+      content_reports: {
+        Row: ContentReportRow
+        Insert: Pick<ContentReportRow, 'reporter_id' | 'response_id' | 'reason'> & Partial<Pick<ContentReportRow, 'details'>>
+        Update: never
+        Relationships: []
+      }
     }
     Views: {
       ralli_feed: {
@@ -156,6 +163,7 @@ export interface Database {
       contribution_kind: 'creator_reward' | 'boost'
       transaction_status: 'pending' | 'confirmed' | 'failed' | 'refunded'
       settlement_status: 'pending' | 'paying' | 'paid' | 'failed' | 'refunded'
+      report_reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'
     }
     CompositeTypes: Record<never, never>
   }
