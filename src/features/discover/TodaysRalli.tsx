@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, UsersRound } from 'lucide-react'
 import { useTodaysRalli } from '../../hooks/useTodaysRalli.ts'
 import type { Dare } from './DareCard.tsx'
 
@@ -31,9 +31,9 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
         <div>
           {responded ? (
             <div className="daily-ralli__footer">
-              <span><strong>You’re in.</strong> {ralli.participants.toLocaleString()} {ralli.participants === 1 ? 'response' : 'responses'} so far.</span>
+              <span><UsersRound aria-hidden="true" /><strong>You’re in</strong><i aria-hidden="true">·</i>{ralli.participants.toLocaleString()} {ralli.participants === 1 ? 'response' : 'responses'}</span>
               <button className="button button--ink" type="button" onClick={() => onOpen(ralli)}>
-                See what everyone posted <ChevronRight aria-hidden="true" />
+                See responses <ChevronRight aria-hidden="true" />
               </button>
             </div>
           ) : (
@@ -45,7 +45,7 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
                 </div>
               )}
               <div className="daily-ralli__footer">
-                <span><strong>{ralli.participants.toLocaleString()}</strong> {ralli.participants === 1 ? 'person has' : 'people have'} joined today</span>
+                <span><UsersRound aria-hidden="true" /><strong>{ralli.participants.toLocaleString()}</strong> {ralli.participants === 1 ? 'person has' : 'people have'} joined today</span>
                 <button className="button button--ink" type="button" onClick={() => onJoin(ralli)}>
                   Join today’s Ralli <ChevronRight aria-hidden="true" />
                 </button>
