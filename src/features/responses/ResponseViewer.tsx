@@ -8,6 +8,7 @@ import { blockUser, deleteResponse, fetchResponses, reportResponse, type RalliRe
 import { useBackend } from '../../store/backend.ts'
 import { useDialogFocus } from '../../hooks/useDialogFocus.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { FeedVideo } from '../../components/media/FeedVideo.tsx'
 
 type Sort = 'Popular' | 'Newest'
 
@@ -90,7 +91,7 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
         {orderedResponses.map((response) => <article className="response-post" key={response.id}>
           <header><Avatar initials={response.initials} avatarUrl={response.authorAvatarUrl} className="avatar--response avatar--lime" /><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div>{user?.id === response.authorId ? <button className="response-more" type="button" aria-label="Delete your response" onClick={() => void removeResponse(response)}><X aria-hidden="true" /></button> : <button className="response-more" type="button" aria-label={`Report or block ${response.author}`} onClick={() => { setReportTarget(response); setReportState('idle') }}><MoreHorizontal aria-hidden="true" /></button>}</header>
           {response.copy && response.mediaUrl && <p className="response-post__copy">{response.copy}</p>}
-          {response.mediaUrl && response.format === 'video' && <video className="response-post__image" src={response.mediaUrl} controls preload="metadata" />}
+          {response.mediaUrl && response.format === 'video' && <FeedVideo className="response-post__video" src={response.mediaUrl} />}
           {response.mediaUrl && response.format === 'photo' && <img className="response-post__image" src={response.mediaUrl} alt={`${response.author}'s response to ${prompt}`} width="720" height="520" loading="lazy" decoding="async" />}
           {!response.mediaUrl && <div className="text-response"><span>“</span><p>{response.copy}</p></div>}
           <footer>

@@ -28,6 +28,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitStage, setSubmitStage] = useState<'wallet' | 'prepare' | 'upload' | 'publish'>('wallet')
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [responseId, setResponseId] = useState<string | null>(null)
   const [passOpen, setPassOpen] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -103,12 +104,13 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
     if (format !== 'text' && !media) return setError(`Take or choose a ${format} before posting.`)
     setError('')
     setSubmitting(true)
+    setUploadProgress(0)
     setSubmitStage('wallet')
     try {
       await ensureWalletAttached(user.id, account)
       if (mediaOptimizationRef.current && mediaPreparing) setSubmitStage('prepare')
       const preparedMedia = mediaOptimizationRef.current ? await mediaOptimizationRef.current.catch(() => media) : media
-      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: preparedMedia, onStage: setSubmitStage })
+      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: preparedMedia, onStage: setSubmitStage, onUploadProgress: setUploadProgress })
       setResponseId(createdResponseId)
       setSubmitted(true)
       onPosted?.()
@@ -196,7 +198,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
         <footer className="flow-actions flow-actions--static">
           <p>Posting does not trigger a wallet transaction.</p>
           <button className="button button--ink button--wide" type="button" disabled={submitting} aria-busy={submitting} onClick={() => void submitResponse()}>
-            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'prepare' ? 'Preparing photo…' : submitStage === 'upload' ? 'Uploading response…' : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
+            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'prepare' ? 'Preparing photo…' : submitStage === 'upload' ? `Uploading response${uploadProgress ? ` · ${uploadProgress}%` : '…'}` : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
           </button>
         </footer>
       </section>

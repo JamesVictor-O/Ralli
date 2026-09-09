@@ -158,16 +158,65 @@ export function createId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
-export async function uploadRalliMedia(userId: string, folder: 'covers' | 'responses', file: File) {
+function resumableStorageEndpoint() {
+  const configuredUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+  if (!configuredUrl) throw new Error('Supabase is not configured.')
+  const url = new URL(configuredUrl)
+  const projectRef = url.hostname.endsWith('.supabase.co') ? url.hostname.split('.')[0] : null
+  return projectRef
+    ? `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
+    : `${url.origin}/storage/v1/upload/resumable`
+}
+
+async function uploadVideoResumably(path: string, file: File, onProgress?: (percentage: number) => void) {
+  const database = requireSupabase()
+  // Keep the TUS client out of the initial social feed bundle; it is only needed
+  // after somebody explicitly posts a large video.
+  const { Upload } = await import('tus-js-client')
+  const { data: { session }, error } = await database.auth.getSession()
+  if (error) throw error
+  if (!session) throw new Error('Your Ralli session expired. Reopen the app and try again.')
+
+  await new Promise<void>((resolve, reject) => {
+    const upload = new Upload(file, {
+      endpoint: resumableStorageEndpoint(),
+      retryDelays: [0, 1_000, 3_000, 5_000, 10_000],
+      headers: { authorization: `Bearer ${session.access_token}`, 'x-upsert': 'true' },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: 6 * 1024 * 1024,
+      metadata: {
+        bucketName: 'ralli-media',
+        objectName: path,
+        contentType: uploadContentType(file),
+        cacheControl: '31536000',
+      },
+      onError: reject,
+      onProgress: (uploaded, total) => onProgress?.(Math.min(100, Math.round((uploaded / total) * 100))),
+      onSuccess: () => resolve(),
+    })
+    void upload.findPreviousUploads().then((previous) => {
+      if (previous.length) upload.resumeFromPreviousUpload(previous[0])
+      upload.start()
+    }).catch(reject)
+  })
+}
+
+export async function uploadRalliMedia(userId: string, folder: 'covers' | 'responses', file: File, onProgress?: (percentage: number) => void) {
   validateMedia(file, folder === 'covers' ? 'cover' : 'response')
   const extension = fileExtension(file) || (isVideoFile(file) ? 'mp4' : 'jpg')
   const path = `${userId}/${folder}/${createId()}.${extension}`
+  if (isVideoFile(file) && file.size > 6 * 1024 * 1024) {
+    await uploadVideoResumably(path, file, onProgress)
+    return path
+  }
   const { error } = await withNetworkRetry(() => requireSupabase().storage.from('ralli-media').upload(path, file, {
     contentType: uploadContentType(file),
     cacheControl: '31536000',
     upsert: true,
   }))
   if (error) throw error
+  onProgress?.(100)
   return path
 }
 

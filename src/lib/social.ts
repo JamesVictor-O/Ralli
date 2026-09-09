@@ -48,6 +48,7 @@ export interface CreateResponseInput {
   text: string
   media?: File | null
   onStage?: (stage: 'upload' | 'publish') => void
+  onUploadProgress?: (percentage: number) => void
 }
 
 export async function createResponse(input: CreateResponseInput) {
@@ -58,7 +59,7 @@ export async function createResponse(input: CreateResponseInput) {
   if (input.media) {
     input.onStage?.('upload')
     try {
-      mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media)
+      mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media, input.onUploadProgress)
     } catch (error) {
       throw new Error(friendlyNetworkError(error, 'uploading your response'), { cause: error })
     }
