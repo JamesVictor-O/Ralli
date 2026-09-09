@@ -57,16 +57,16 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
           </div>
 
           <div className="reward-callout">
-            <div><p className="eyebrow">NIM makes the crowd count</p><h2>The favourite response earns the pool.</h2></div>
+            <div><p className="eyebrow">NIM makes support real</p><h2>Boost the person who started it.</h2></div>
             <p>
               {ralli.boostCount > 0
                 ? `🔥 ${ralli.boostCount} ${ralli.boostCount === 1 ? 'person has' : 'people have'} boosted this — ${ralli.reward} NIM behind it so far.`
                 : ralli.starterReward > 0
-                  ? `${ralli.author} kickstarted it with ${ralli.starterReward} NIM. Be the first to boost it.`
-                  : 'Nobody has put NIM behind this yet. Boost it to make it worth chasing.'}
+                  ? `${ralli.author} has received ${ralli.starterReward} NIM.`
+                  : `No boosts yet. Send NIM directly to ${ralli.author} to support this Ralli.`}
             </p>
           </div>
-          <RewardPool total={ralli.reward} starter={ralli.starterReward} boosts={ralli.boosts} onBoost={() => setBoostOpen(true)} />
+          <RewardPool total={ralli.reward} boosts={ralli.boosts} onBoost={() => setBoostOpen(true)} />
 
           <ResponseViewer ralliId={ralli.id} prompt={ralli.prompt} />
         </div>

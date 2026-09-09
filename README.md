@@ -370,7 +370,7 @@ Ralli includes a Vercel configuration for its Vite production build.
 
 1. Import the repository into Vercel.
 2. Keep the detected framework as **Vite**.
-3. Add `VITE_RALLI_REWARD_ADDRESS` in the project environment variables and the matching `RALLI_REWARD_ADDRESS` Supabase Edge Function secret to enable reward and Boost custody payments.
+3. Boosts and tips are sent directly to verified Nimiq addresses; Ralli does not require a custody address.
 4. Ralli automatically uses the injected Mini App SDK inside Nimiq Pay and Nimiq Hub in a regular browser. Set `VITE_NIMIQ_HUB_URL=https://hub.nimiq-testnet.com` for testnet browser testing; omit it or use `https://hub.nimiq.com` for mainnet.
 5. Add the other values from `.env.example` when their corresponding integrations are enabled.
 6. Deploy.

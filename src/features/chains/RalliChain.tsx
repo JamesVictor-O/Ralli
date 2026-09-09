@@ -4,6 +4,7 @@ import { fetchMyChains } from '../../lib/profile.ts'
 import { fetchRalliById } from '../../lib/rallis.ts'
 import type { Dare } from '../discover/DareCard.tsx'
 import { useBackend } from '../../store/backend.ts'
+import { fetchInvitationConversion } from '../../lib/invitations.ts'
 
 type Chain = Awaited<ReturnType<typeof fetchMyChains>>[number]
 
@@ -20,11 +21,12 @@ export function RalliChain({ onOpenRalli }: { onOpenRalli: (ralli: Dare) => void
   const [chains, setChains] = useState<Chain[]>([])
   const [status, setStatus] = useState<'loading' | 'success' | 'empty' | 'error'>('loading')
   const [openingId, setOpeningId] = useState<string | null>(null)
+  const [conversion, setConversion] = useState({ total: 0, opened: 0, responded: 0, rate: 0 })
   const { user } = useBackend()
   const load = useCallback(async () => {
     if (!user) return
     setStatus('loading')
-    try { const data = await fetchMyChains(user.id); setChains(data); setStatus(data.length ? 'success' : 'empty') }
+    try { const [data, metrics] = await Promise.all([fetchMyChains(user.id), fetchInvitationConversion(user.id)]); setChains(data); setConversion(metrics); setStatus(data.length ? 'success' : 'empty') }
     catch { setStatus('error') }
   }, [user])
   useEffect(() => { void Promise.resolve().then(load) }, [load])
@@ -48,6 +50,7 @@ export function RalliChain({ onOpenRalli }: { onOpenRalli: (ralli: Dare) => void
     {status === 'error' && <div className="empty-state" role="alert"><AlertCircle aria-hidden="true" /><h2>Chains didn’t load</h2><button className="button button--ink" type="button" onClick={() => void load()}>Try again</button></div>}
     {status === 'empty' && <div className="empty-state"><Sparkles aria-hidden="true" /><h2>No chain links yet</h2><p>Respond to a Ralli, pass it on, and its journey will begin here.</p></div>}
     {status === 'success' && <>
+      <div className="conversion-card" aria-label="Invitation conversion"><span><strong>{conversion.total}</strong><small>sent</small></span><span><strong>{conversion.opened}</strong><small>opened</small></span><span><strong>{conversion.responded}</strong><small>responded</small></span><span><strong>{conversion.rate}%</strong><small>conversion</small></span></div>
       <article className="chain-spotlight">
         <div className="chain-spotlight__copy">
           <span className="pill pill--dark"><Repeat2 aria-hidden="true" />Your latest pass</span>

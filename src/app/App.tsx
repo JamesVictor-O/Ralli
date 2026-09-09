@@ -14,6 +14,7 @@ import { useMyProfileSummary } from '../hooks/useMyProfileSummary.ts'
 import { useUnreadActivityCount } from '../hooks/useUnreadActivityCount.ts'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
 import { fetchRalliById } from '../lib/rallis.ts'
+import { openInvitation, type InvitationPreview } from '../lib/invitations.ts'
 import '../styles/index.css'
 
 const Activity = lazy(() => import('../features/activity/Activity.tsx').then((module) => ({ default: module.Activity })))
@@ -26,6 +27,7 @@ const Onboarding = lazy(() => import('../features/onboarding/Onboarding.tsx').th
 const WalletPanel = lazy(() => import('../components/navigation/WalletPanel.tsx').then((module) => ({ default: module.WalletPanel })))
 const SearchPanel = lazy(() => import('../features/discover/SearchPanel.tsx').then((module) => ({ default: module.SearchPanel })))
 const Boost = lazy(() => import('../features/rewards/Boost.tsx').then((module) => ({ default: module.Boost })))
+const InvitationPrompt = lazy(() => import('../features/chains/InvitationPrompt.tsx').then((module) => ({ default: module.InvitationPrompt })))
 
 const navItems = [
   { label: 'Discover', icon: Home },
@@ -46,6 +48,8 @@ export default function App() {
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [boostTarget, setBoostTarget] = useState<Dare | null>(null)
+  const [invitation, setInvitation] = useState<InvitationPreview | null>(null)
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
   const { status: walletStatus, account } = useWallet()
   const { user } = useBackend()
   const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
@@ -64,6 +68,22 @@ export default function App() {
     window.addEventListener('keydown', openSearch)
     return () => window.removeEventListener('keydown', openSearch)
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const token = new URLSearchParams(window.location.search).get('invite')
+    if (!token) return
+    void openInvitation(token).then((preview) => {
+      if (preview) { setInviteToken(token); setInvitation(preview) }
+    }).catch(() => undefined)
+  }, [user])
+
+  function dismissInvitation() {
+    setInvitation(null)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('invite')
+    window.history.replaceState({}, '', url)
+  }
 
   useEffect(() => {
     const ralliId = new URLSearchParams(window.location.search).get('ralli')
@@ -161,9 +181,9 @@ export default function App() {
         <section className="economy-loop" aria-labelledby="economy-heading">
           <header><div><p className="eyebrow">Powered by Nimiq</p><h2 id="economy-heading">Participation has real momentum.</h2></div><span className="nim-mark">NIM</span></header>
           <div className="economy-loop__steps">
-            <div><span><Sparkles aria-hidden="true" /></span><p><strong>Reward</strong><small>A creator starts the pool.</small></p></div>
+            <div><span><Sparkles aria-hidden="true" /></span><p><strong>Create</strong><small>Start something worth doing.</small></p></div>
             <i aria-hidden="true">→</i>
-            <div><span><Zap aria-hidden="true" /></span><p><strong>Boost</strong><small>The crowd grows it.</small></p></div>
+            <div><span><Zap aria-hidden="true" /></span><p><strong>Boost</strong><small>Support creators directly.</small></p></div>
             <i aria-hidden="true">→</i>
             <div><span><HandCoins aria-hidden="true" /></span><p><strong>Tip</strong><small>Great responses earn directly.</small></p></div>
           </div>
@@ -216,6 +236,7 @@ export default function App() {
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
       {boostTarget && <Boost ralliId={boostTarget.id} creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
+      {invitation && inviteToken && <InvitationPrompt invitation={invitation} token={inviteToken} onClose={dismissInvitation} onAccept={() => { void fetchRalliById(invitation.ralli_id).then((ralli) => { setSelectedRalli(ralli); dismissInvitation(); setActiveFlow('join') }) }} />}
       </Suspense>
 
       <nav className="bottom-nav" aria-label="Primary navigation">

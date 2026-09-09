@@ -48,7 +48,7 @@ Deno.serve(async (request) => {
     const reportedRecipient = normalizeNimiqAddress(body.recipient)
 
     if (body.kind === 'tip') {
-      const { data: tip } = await admin.from('response_tips').select('id, status, recipient_id, amount_luna')
+      const { data: tip } = await admin.from('response_tips').select('id, status, recipient_id, response_id, amount_luna')
         .eq('transaction_hash', hash).eq('sender_id', user.id).maybeSingle()
       if (!tip) return json({ error: 'No matching tip submission found for this transaction.' }, 404, headers)
       if (tip.status === 'confirmed') return json({ confirmed: true, alreadyConfirmed: true }, 200, headers)
@@ -61,27 +61,28 @@ Deno.serve(async (request) => {
 
       const { error } = await admin.from('response_tips').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('id', tip.id)
       if (error) throw error
+      const { data: response } = await admin.from('responses').select('ralli_id').eq('id', tip.response_id).single()
+      await admin.from('activity_events').insert({ user_id: user.id, ralli_id: response?.ralli_id ?? null, response_id: tip.response_id, kind: 'payment_confirmed', payload: { payment_kind: 'tip', amount_luna: tip.amount_luna, transaction_hash: hash } })
     } else {
-      const custodyAddress = Deno.env.get('RALLI_REWARD_ADDRESS')
-      if (!custodyAddress) throw new Error('CUSTODY_NOT_CONFIGURED')
-      if (normalizeNimiqAddress(custodyAddress) !== reportedRecipient) {
-        return json({ error: 'This transaction was not sent to the reward pool address.' }, 409, headers)
-      }
-
-      const { data: contribution } = await admin.from('pool_contributions').select('id, status, amount_luna, kind')
+      const { data: contribution } = await admin.from('pool_contributions').select('id, status, amount_luna, kind, ralli_id')
         .eq('transaction_hash', hash).eq('contributor_id', user.id).eq('kind', body.kind).maybeSingle()
       if (!contribution) return json({ error: 'No matching contribution submission found for this transaction.' }, 404, headers)
       if (contribution.status === 'confirmed') return json({ confirmed: true, alreadyConfirmed: true }, 200, headers)
+      const { data: ralli } = await admin.from('rallis').select('creator_id').eq('id', contribution.ralli_id).single()
+      const { data: creator } = await admin.from('profiles').select('nimiq_address, nimiq_address_verified_at').eq('id', ralli?.creator_id ?? '').single()
+      if (!creator?.nimiq_address_verified_at || normalizeNimiqAddress(creator.nimiq_address ?? '') !== reportedRecipient) {
+        return json({ error: 'This boost was not sent to the Ralli creator.' }, 409, headers)
+      }
       if (body.valueLuna! < contribution.amount_luna) return json({ error: 'The confirmed amount is less than what was recorded.' }, 409, headers)
 
       const { error } = await admin.from('pool_contributions').update({ status: 'confirmed', confirmed_at: new Date().toISOString() }).eq('id', contribution.id)
       if (error) throw error
+      await admin.from('activity_events').insert({ user_id: user.id, ralli_id: contribution.ralli_id, kind: 'payment_confirmed', payload: { payment_kind: contribution.kind, amount_luna: contribution.amount_luna, transaction_hash: hash } })
     }
 
     return json({ confirmed: true }, 200, headers)
   } catch (error) {
     if (error instanceof Error && error.message === 'AUTH_REQUIRED') return json({ error: 'Authentication is required.' }, 401, headers)
-    if (error instanceof Error && error.message === 'CUSTODY_NOT_CONFIGURED') return json({ error: 'Reward custody is not configured.' }, 503, headers)
     console.error('confirm-payment failed', error)
     return json({ error: 'This payment could not be confirmed. It will stay pending — try again in a moment.' }, 500, headers)
   }

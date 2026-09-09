@@ -5,6 +5,7 @@ import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
 import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { fetchVerifiedCreatorAddress } from '../../lib/rallis.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
 
@@ -25,9 +26,10 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
   const [amount, setAmount] = useState('2')
   const [state, setState] = useState<'idle' | 'submitting' | 'confirming' | 'success' | 'sent-unconfirmed'>('idle')
   const [error, setError] = useState('')
-  const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
+  const [recipient, setRecipient] = useState<string | null | undefined>(undefined)
 
   useBodyScrollLock()
+  useEffect(() => { void fetchVerifiedCreatorAddress(ralliId).then(setRecipient).catch(() => setRecipient(null)) }, [ralliId])
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && state !== 'submitting' && state !== 'confirming' && onClose()
@@ -76,7 +78,7 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
         ) : state === 'success' ? (
           <div className="payment-success" aria-live="polite">
             <span><Check aria-hidden="true" /></span><h3>Boost confirmed</h3>
-            <p>Your {amount} NIM is now counted in the reward pool.</p>
+            <p>Your {amount} NIM was sent directly to {creator}.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : state === 'sent-unconfirmed' ? (
@@ -95,18 +97,20 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
               {status === 'connecting' ? 'Waiting for approval…' : 'Connect Nimiq account'}
             </button>
           </div>
+        ) : recipient === undefined ? (
+          <div className="wallet-state" aria-busy="true"><LoaderCircle className="spin" aria-hidden="true" /><h3>Finding creator wallet…</h3></div>
         ) : !recipient ? (
           <div className="wallet-state" role="alert">
             <span className="wallet-state__icon wallet-state__icon--coral"><Zap aria-hidden="true" /></span>
             <h3>Boosts need a recipient</h3>
-            <p>Configure <code>VITE_RALLI_REWARD_ADDRESS</code> with the dedicated reward-pool custody address before accepting boosts.</p>
+            <p>{creator} needs to verify a Nimiq address before receiving direct boosts.</p>
             <button className="button button--soft" type="button" onClick={onClose}>Close</button>
           </div>
         ) : (
           <form className="payment-form" onSubmit={submit}>
             <div className="payment-recipient">
               <span className="avatar avatar--author avatar--coral">{creator.slice(0, 2).toUpperCase()}</span>
-              <span><small>{creator} · {ralli}</small><strong>Reward pool · {pool} NIM</strong></span>
+              <span><small>{creator} · {ralli}</small><strong>{pool} NIM received directly</strong></span>
             </div>
             <fieldset className="amount-picker">
               <legend>Choose an amount</legend>

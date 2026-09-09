@@ -51,6 +51,8 @@ type PoolContributionRow = { id: string; ralli_id: string; contributor_id: strin
 type ResponseTipRow = { id: string; response_id: string; sender_id: string; recipient_id: string; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
 type ActivityEventRow = { id: string; user_id: string; actor_id: string | null; ralli_id: string | null; response_id: string | null; kind: string; payload: Json; read_at: string | null; created_at: string }
 type ContentReportRow = { id: string; reporter_id: string; response_id: string; reason: Database['public']['Enums']['report_reason']; details: string; status: string; created_at: string }
+type UserBlockRow = { blocker_id: string; blocked_id: string; created_at: string }
+type RalliInvitationRow = { id: string; token: string; ralli_id: string; response_id: string | null; sender_id: string; recipient_id: string | null; status: Database['public']['Enums']['invitation_status']; opened_at: string | null; accepted_at: string | null; responded_at: string | null; created_at: string }
 
 export type RalliFeedRow = {
   id: string | null
@@ -139,6 +141,8 @@ export interface Database {
         Update: never
         Relationships: []
       }
+      user_blocks: { Row: UserBlockRow; Insert: Pick<UserBlockRow, 'blocker_id' | 'blocked_id'>; Update: never; Relationships: [] }
+      ralli_invitations: { Row: RalliInvitationRow; Insert: never; Update: never; Relationships: [] }
     }
     Views: {
       ralli_feed: {
@@ -155,6 +159,10 @@ export interface Database {
         Args: { challenge_id: string; profile_id: string; verified_address: string }
         Returns: undefined
       }
+      remove_my_ralli: { Args: { ralli_id: string }; Returns: string }
+      create_ralli_invitation: { Args: { target_ralli: string; source_response: string | null }; Returns: string }
+      open_ralli_invitation: { Args: { invite_token: string }; Returns: Array<{ ralli_id: string; prompt: string; sender_name: string; status: Database['public']['Enums']['invitation_status'] }> }
+      accept_ralli_invitation: { Args: { invite_token: string }; Returns: string }
     }
     Enums: {
       ralli_status: 'draft' | 'active' | 'judging' | 'settled' | 'cancelled'
@@ -164,6 +172,7 @@ export interface Database {
       transaction_status: 'pending' | 'confirmed' | 'failed' | 'refunded'
       settlement_status: 'pending' | 'paying' | 'paid' | 'failed' | 'refunded'
       report_reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'
+      invitation_status: 'shared' | 'opened' | 'accepted' | 'responded'
     }
     CompositeTypes: Record<never, never>
   }

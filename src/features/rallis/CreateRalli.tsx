@@ -1,20 +1,15 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, Lock, UsersRound, X, Zap } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, UsersRound, X } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
 import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
-import { nimToLuna, sendNimPayment } from '../../nimiq/payments.ts'
-import { confirmPayment, recordPaymentSubmission } from '../../lib/payments.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
-
-const kickstartPresets = ['0', '5', '10', '25']
 
 export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCreated?: (id: string) => void }) {
   const [step, setStep] = useState<'form' | 'success'>('form')
   const [prompt, setPrompt] = useState('')
-  const [reward, setReward] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'friends'>('public')
   const [error, setError] = useState('')
   const [cover, setCover] = useState<File | null>(null)
@@ -26,8 +21,6 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
   const [submitting, setSubmitting] = useState(false)
   const [publishStage, setPublishStage] = useState<'wallet' | 'prepare' | 'cover' | 'publish'>('wallet')
   const [createdId, setCreatedId] = useState<string | null>(null)
-  const [fundingWarning, setFundingWarning] = useState('')
-  const [fundingState, setFundingState] = useState<'idle' | 'submitting' | 'confirming' | 'funded'>('idle')
   const [shareStatus, setShareStatus] = useState('')
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
@@ -121,31 +114,6 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
     }
   }
 
-  async function fundCreatedRalli() {
-    if (!createdId || !reward || Number(reward) <= 0) return
-    setFundingWarning('')
-    setFundingState('submitting')
-    try {
-      const recipient = import.meta.env.VITE_RALLI_REWARD_ADDRESS as string | undefined
-      const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: reward, message: `Ralli reward: ${createdId}` })
-      await recordPaymentSubmission({ kind: 'creator_reward', ralliId: createdId, amountLuna: nimToLuna(reward), transactionHash })
-      setFundingState('confirming')
-      try {
-        await confirmPayment({ kind: 'creator_reward', transactionHash })
-        setFundingState('funded')
-      } catch (confirmFailure) {
-        console.error('Kickstart confirmation failed', confirmFailure)
-        setFundingWarning('Your NIM is on the network but is taking longer than usual to confirm. It will still count once it settles — no need to send it again.')
-        setFundingState('funded')
-      }
-      // 'funded' from here on regardless of outcome: the transaction was sent either way, and
-      // fundCreatedRalli must never be called twice for it — the button below hides accordingly.
-    } catch (fundingFailure) {
-      setFundingWarning(fundingFailure instanceof Error ? fundingFailure.message : 'The Ralli is live, but its reward was not attached.')
-      setFundingState('idle')
-    }
-  }
-
   async function shareCreatedRalli() {
     if (!createdId) return
     setShareStatus('')
@@ -169,16 +137,8 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
           <span className="success-burst success-burst--violet" aria-hidden="true"><Check /></span>
           <p className="eyebrow">Your Ralli is live</p>
           <h1 id="created-title">Now pass it on.</h1>
-          <p>{fundingState === 'confirming' ? 'Confirming your kickstart on-chain…' : fundingState === 'funded' ? `${reward} NIM was submitted to kickstart the pool.` : 'The pool starts at 0 — invite people, and the crowd can boost it from here.'}</p>
-          {fundingWarning && <p className="payment-error" role="alert"><strong>Kickstart needs attention.</strong> {fundingWarning}</p>}
+          <p>Invite people to join. Anyone who loves it can boost you directly with NIM.</p>
           <div className="success-actions">
-            {reward && Number(reward) > 0 && fundingState !== 'funded' && (
-              <button className="button button--soft button--wide" type="button" disabled={fundingState !== 'idle'}
-                aria-busy={fundingState !== 'idle'} onClick={() => void fundCreatedRalli()}>
-                {fundingState !== 'idle' && <LoaderCircle className="spin" aria-hidden="true" />}
-                {fundingState === 'submitting' ? 'Waiting for approval…' : fundingState === 'confirming' ? 'Confirming…' : `Kickstart with ${reward} NIM`}
-              </button>
-            )}
             <button className="button button--ink button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>
             {shareStatus && <p className="inline-status" role="status">{shareStatus}</p>}
             <button className="button button--soft button--wide" type="button" onClick={onClose}>Back to Discover</button>
@@ -244,32 +204,6 @@ export function CreateRalli({ onClose, onCreated }: { onClose: () => void; onCre
             <label htmlFor="duration">Duration</label>
             <div className="input-with-icon"><Clock3 aria-hidden="true" /><select id="duration" value={duration} onChange={(event) => setDuration(event.target.value)}><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></div>
           </div>
-
-          <div className="field">
-            <label>Kickstart with NIM <span>Optional</span></label>
-            <fieldset className="amount-picker">
-              <legend>The pool can also grow from boosts once people see it — this isn’t required.</legend>
-              {kickstartPresets.map((value) => (
-                <button className={reward === value ? 'is-active' : ''} type="button" key={value}
-                  onClick={() => setReward(value)}>
-                  {value === '0' ? 'No thanks' : `${value} NIM`}
-                </button>
-              ))}
-            </fieldset>
-            <div className="input-with-icon">
-              <Zap aria-hidden="true" />
-              <input type="text" inputMode="decimal" autoComplete="off" placeholder="Custom amount" aria-label="Custom kickstart amount"
-                value={reward === '0' ? '' : reward} onChange={(event) => setReward(event.target.value.replace(/[^0-9.]/g, ''))} />
-              <strong>NIM</strong>
-            </div>
-          </div>
-
-          {reward && Number(reward) > 0 && (
-            <div className="wallet-note">
-              <Lock aria-hidden="true" />
-              <p><strong>You’ll approve this separately.</strong><span>Nimiq Pay will ask you to confirm the {reward} NIM kickstart after the Ralli is created.</span></p>
-            </div>
-          )}
 
           {error && !promptInvalid && <p className="payment-error" role="alert">{error}</p>}
 

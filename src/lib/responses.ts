@@ -30,8 +30,16 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   if (error) throw error
   if (!rows?.length) return []
 
-  const authorIds = [...new Set(rows.map((row) => row.author_id))]
-  const responseIds = rows.map((row) => row.id)
+  let visibleRows = rows
+  if (viewerId) {
+    const { data: blocks, error: blockError } = await database.from('user_blocks').select('blocked_id').eq('blocker_id', viewerId)
+    if (blockError) throw blockError
+    const blocked = new Set((blocks ?? []).map((block) => block.blocked_id))
+    visibleRows = rows.filter((row) => !blocked.has(row.author_id))
+  }
+  if (!visibleRows.length) return []
+  const authorIds = [...new Set(visibleRows.map((row) => row.author_id))]
+  const responseIds = visibleRows.map((row) => row.id)
   const [profilesResult, reactionsResult, tipsResult] = await Promise.all([
     database.from('profiles').select('id, display_name, handle, avatar_path, nimiq_address, nimiq_address_verified_at').in('id', authorIds),
     database.from('reactions').select('*').in('response_id', responseIds),
@@ -42,7 +50,7 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   if (tipsResult.error) throw tipsResult.error
 
   const profiles = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]))
-  return rows.map((row) => {
+  return visibleRows.map((row) => {
     const profile = profiles.get(row.author_id)
     const name = profile?.display_name || profile?.handle || 'Ralli member'
     const reactions = (reactionsResult.data ?? []).filter((reaction) => reaction.response_id === row.id)
@@ -67,6 +75,16 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   })
 }
 
+export async function deleteResponse(responseId: string, userId: string) {
+  const { error } = await requireSupabase().from('responses').delete().eq('id', responseId).eq('author_id', userId)
+  if (error) throw error
+}
+
+export async function blockUser(blockedId: string, blockerId: string) {
+  const { error } = await requireSupabase().from('user_blocks').upsert({ blocked_id: blockedId, blocker_id: blockerId })
+  if (error) throw error
+}
+
 export async function hasResponded(ralliId: string, userId: string) {
   const { data, error } = await requireSupabase().from('responses').select('id')
     .eq('ralli_id', ralliId).eq('author_id', userId).maybeSingle()
@@ -87,13 +105,10 @@ export async function setReaction(responseId: string, userId: string, previous: 
 }
 
 export async function recordPass(ralliId: string, responseId: string | null, userId: string) {
-  const { data, error } = await requireSupabase().from('ralli_passes').insert({
-    ralli_id: ralliId,
-    response_id: responseId,
-    passed_by: userId,
-  }).select('share_code').single()
+  void userId
+  const { data, error } = await requireSupabase().rpc('create_ralli_invitation', { target_ralli: ralliId, source_response: responseId })
   if (error) throw error
-  return data.share_code
+  return data
 }
 
 export async function reportResponse(responseId: string, reporterId: string, reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other') {

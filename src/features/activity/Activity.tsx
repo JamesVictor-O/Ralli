@@ -14,7 +14,10 @@ const presentation = {
   pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, kind: 'Social' },
   response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, kind: 'Social' },
   tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, kind: 'NIM' },
-  boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} boosted your reward pool`, kind: 'NIM' },
+  boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} sent you a Ralli boost`, kind: 'NIM' },
+  invitation: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} challenged you to a Ralli`, kind: 'Social' },
+  invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, kind: 'Social' },
+  payment_confirmed: { icon: Sparkles, tone: 'lime', title: () => 'Your NIM payment was confirmed', kind: 'NIM' },
 } as const
 
 function relativeTime(value: string) {
@@ -50,6 +53,14 @@ export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) =
   }, [user])
 
   useEffect(() => { void Promise.resolve().then(load) }, [load])
+  useEffect(() => {
+    if (!user) return
+    const database = requireSupabase()
+    const channel = database.channel(`activity-page-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_events', filter: `user_id=eq.${user.id}` }, () => { void load(); onRead?.() })
+      .subscribe()
+    return () => { void database.removeChannel(channel) }
+  }, [user, load, onRead])
 
   async function markAllRead() {
     if (!user) return

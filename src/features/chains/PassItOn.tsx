@@ -22,9 +22,11 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [shareCompleted, setShareCompleted] = useState(false)
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
   const { user } = useBackend()
   const { account } = useWallet()
-  const ralliUrl = `${window.location.origin}${window.location.pathname}?ralli=${ralliId}`
+  const baseUrl = `${window.location.origin}${window.location.pathname}?ralli=${ralliId}`
+  const ralliUrl = inviteToken ? `${baseUrl}&invite=${inviteToken}` : baseUrl
   const nativeShare = (navigator as unknown as { share?: (data: ShareData) => Promise<void> }).share
 
   useBodyScrollLock()
@@ -36,9 +38,15 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   }, [onClose, saving])
 
   async function copyLink() {
-    await navigator.clipboard.writeText(ralliUrl)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+    if (!user) return setError('Ralli is still connecting. Try again in a moment.')
+    try {
+      await ensureWalletAttached(user.id, account)
+      const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
+      if (!inviteToken) setInviteToken(token)
+      await navigator.clipboard.writeText(`${baseUrl}&invite=${token}`)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch (failure) { setError(actionableError(failure, 'The invitation link could not be copied. Try again.')) }
   }
 
   async function shareRalli() {
@@ -48,18 +56,20 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     let didShare = shareCompleted
     try {
       await ensureWalletAttached(user.id, account)
+      const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
+      if (!inviteToken) setInviteToken(token)
+      const invitationUrl = `${baseUrl}&invite=${token}`
       if (!shareCompleted) {
-        if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} joined “${prompt}”`, url: ralliUrl })
-        else await copyLink()
+        if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} challenged you: “${prompt}”`, url: invitationUrl })
+        else { await navigator.clipboard.writeText(invitationUrl); setCopied(true) }
         setShareCompleted(true)
         didShare = true
       }
-      await recordPass(ralliId, responseId, user.id)
       setShared(true)
     } catch (failure) {
       if (failure instanceof Error && failure.name === 'AbortError') return
       setError(didShare
-        ? 'Your invite was shared, but its chain link was not recorded. Retry to record it without sharing again.'
+        ? 'Your invitation was created but sharing did not finish. Try sharing the same invitation again.'
         : actionableError(failure, 'This Ralli could not be passed on. Try again.'))
     } finally {
       setSaving(false)

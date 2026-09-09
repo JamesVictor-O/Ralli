@@ -35,7 +35,6 @@ function toNim(luna: number | null) {
 
 export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
   const author = row.display_name || row.handle || 'Ralli creator'
-  const starterReward = toNim(row.creator_reward_luna)
   const boosts = toNim(row.boost_total_luna)
   return {
     id: row.id ?? `ralli-${index}`,
@@ -50,8 +49,8 @@ export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
     passes: row.pass_count ?? 0,
     // The crowdfunded total is what's actually behind a Ralli — rallis.reward_total_luna
     // stays 0 forever by design (see the "Verified users create unfunded Rallis" policy).
-    reward: starterReward + boosts,
-    starterReward,
+    reward: boosts,
+    starterReward: 0,
     boosts,
     boostCount: row.boost_count ?? 0,
     image: mediaUrl(row.cover_path, index),
@@ -67,6 +66,21 @@ export async function fetchRalliById(id: string) {
   const { data, error } = await requireSupabase().from('ralli_feed').select('*').eq('id', id).single()
   if (error) throw error
   return mapFeedRow(data)
+}
+
+export async function fetchVerifiedCreatorAddress(ralliId: string) {
+  const database = requireSupabase()
+  const { data: ralli, error } = await database.from('rallis').select('creator_id').eq('id', ralliId).single()
+  if (error) throw error
+  const { data: creator, error: creatorError } = await database.from('profiles').select('nimiq_address, nimiq_address_verified_at').eq('id', ralli.creator_id).single()
+  if (creatorError) throw creatorError
+  return creator.nimiq_address_verified_at ? creator.nimiq_address : null
+}
+
+export async function removeMyRalli(ralliId: string) {
+  const { data, error } = await requireSupabase().rpc('remove_my_ralli', { ralli_id: ralliId })
+  if (error) throw error
+  return data
 }
 
 // The single global prompt every session opens on. There's no curated "prompt of the
@@ -120,8 +134,9 @@ export async function fetchRalliPresence(ralliId: string): Promise<RalliPresence
   return { cities: sorted.slice(0, 4), moreCount: Math.max(0, sorted.length - 4) }
 }
 
-export async function fetchRalliFeed() {
-  const { data, error } = await requireSupabase()
+export async function fetchRalliFeed(viewerId?: string | null) {
+  const database = requireSupabase()
+  const { data, error } = await database
     .from('ralli_feed')
     .select('*')
     .eq('status', 'active')
@@ -130,5 +145,12 @@ export async function fetchRalliFeed() {
     .limit(30)
 
   if (error) throw error
-  return (data ?? []).map(mapFeedRow)
+  let rows = data ?? []
+  if (viewerId) {
+    const { data: blocks, error: blockError } = await database.from('user_blocks').select('blocked_id').eq('blocker_id', viewerId)
+    if (blockError) throw blockError
+    const blocked = new Set((blocks ?? []).map((item) => item.blocked_id))
+    rows = rows.filter((row) => !row.creator_id || !blocked.has(row.creator_id))
+  }
+  return rows.map(mapFeedRow)
 }

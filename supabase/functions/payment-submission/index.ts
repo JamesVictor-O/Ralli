@@ -39,11 +39,11 @@ Deno.serve(async (request) => {
       if (error) throw error
     } else {
       if (!body.ralliId) return json({ error: 'Choose a Ralli to fund.' }, 400, headers)
-      const custodyAddress = Deno.env.get('RALLI_REWARD_ADDRESS')
-      if (!custodyAddress) throw new Error('CUSTODY_NOT_CONFIGURED')
-      normalizeNimiqAddress(custodyAddress)
       const { data: ralli } = await admin.from('rallis').select('id, creator_id').eq('id', body.ralliId).single()
       if (!ralli || (body.kind === 'creator_reward' && ralli.creator_id !== user.id)) return json({ error: 'This funding action is not allowed.' }, 403, headers)
+      const { data: creator } = await admin.from('profiles').select('nimiq_address, nimiq_address_verified_at').eq('id', ralli.creator_id).single()
+      if (!creator?.nimiq_address_verified_at || !creator.nimiq_address) return json({ error: 'This creator has no verified boost address.' }, 409, headers)
+      normalizeNimiqAddress(creator.nimiq_address)
       const { error } = await admin.from('pool_contributions').insert({
         ralli_id: body.ralliId, contributor_id: user.id, kind: body.kind,
         amount_luna: body.amountLuna, transaction_hash: body.transactionHash, status: 'pending',
@@ -53,7 +53,6 @@ Deno.serve(async (request) => {
     return json({ recorded: true, status: 'pending' }, 202, headers)
   } catch (error) {
     if (error instanceof Error && error.message === 'AUTH_REQUIRED') return json({ error: 'Authentication is required.' }, 401, headers)
-    if (error instanceof Error && error.message === 'CUSTODY_NOT_CONFIGURED') return json({ error: 'Reward custody is not configured.' }, 503, headers)
     console.error('payment-submission failed', error)
     return json({ error: 'The payment was sent but its receipt could not be recorded. Contact support with the transaction reference.' }, 500, headers)
   }

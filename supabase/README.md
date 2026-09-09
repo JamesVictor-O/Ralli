@@ -24,13 +24,7 @@ npx supabase functions deploy wallet-verify
 npx supabase functions deploy payment-submission
 ```
 
-Rewards and boosts additionally require the same dedicated custody address in both places:
-
-```bash
-npx supabase secrets set RALLI_REWARD_ADDRESS="NQ..."
-```
-
-Set `VITE_RALLI_REWARD_ADDRESS` to that address in the frontend environment. Tips do not use custody; they are sent directly to each response author's verified address.
+Boosts go directly to the Ralli creator’s verified address. Tips go directly to the response author’s verified address. Ralli does not custody either payment.
 
 For production, set `RALLI_ALLOWED_ORIGINS` as a comma-separated list of the Vercel and Nimiq Pay app origins.
 

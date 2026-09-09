@@ -23,7 +23,7 @@ export function useRalliFeed(demoRallis: Dare[], refreshKey = 0) {
     setStatus('loading')
     setError(null)
     try {
-      const nextRallis = await fetchRalliFeed()
+      const nextRallis = await fetchRalliFeed(backend.user?.id)
       setRallis(nextRallis)
       setStatus(nextRallis.length ? 'success' : 'empty')
     } catch (failure) {
@@ -31,7 +31,7 @@ export function useRalliFeed(demoRallis: Dare[], refreshKey = 0) {
       setError(failure instanceof Error ? failure.message : 'The Ralli feed could not be loaded.')
       setStatus('error')
     }
-  }, [backend.status, demoRallis, refreshKey])
+  }, [backend.status, backend.user?.id, demoRallis, refreshKey])
 
   useEffect(() => {
     void Promise.resolve().then(load)

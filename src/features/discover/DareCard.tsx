@@ -47,7 +47,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
         <span className="reaction-button" aria-label={`${dare.reactions} response reactions`}>
           <Heart aria-hidden="true" /><span>{dare.reactions}</span>
         </span>
-        <button className="nim-pool-chip" type="button" onClick={onBoost} aria-label={`${dare.reward} NIM behind this Ralli — tap to boost the pool`}>
+        <button className="nim-pool-chip" type="button" onClick={onBoost} aria-label={`${dare.reward} NIM sent to this creator — tap to boost them`}>
           <Coins aria-hidden="true" /><span>{dare.reward} NIM</span>
         </button>
         <button className="join-button" type="button" onClick={onJoin}>Join Ralli <ChevronRight aria-hidden="true" /></button>

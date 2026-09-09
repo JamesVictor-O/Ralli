@@ -4,9 +4,10 @@ import { Reactions } from './Reactions.tsx'
 import { TipChip } from './TipChip.tsx'
 import { PassItOn } from '../chains/PassItOn.tsx'
 import { Avatar } from '../../components/ui/Avatar.tsx'
-import { fetchResponses, reportResponse, type RalliResponse } from '../../lib/responses.ts'
+import { blockUser, deleteResponse, fetchResponses, reportResponse, type RalliResponse } from '../../lib/responses.ts'
 import { useBackend } from '../../store/backend.ts'
 import { useDialogFocus } from '../../hooks/useDialogFocus.ts'
+import { actionableError } from '../../lib/errors.ts'
 
 type Sort = 'Popular' | 'Newest'
 
@@ -62,6 +63,18 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
     }
   }
 
+  async function removeResponse(response: RalliResponse) {
+    if (!user || !window.confirm('Delete this response permanently? This cannot be undone.')) return
+    try { await deleteResponse(response.id, user.id); setResponses((items) => items.filter((item) => item.id !== response.id)) }
+    catch (failure) { setError(actionableError(failure, 'The response could not be deleted. Try again.')); setStatus('error') }
+  }
+
+  async function blockAuthor() {
+    if (!user || !reportTarget || !window.confirm(`Block ${reportTarget.author}? Their responses will be hidden from you.`)) return
+    try { await blockUser(reportTarget.authorId, user.id); setResponses((items) => items.filter((item) => item.authorId !== reportTarget.authorId)); closeReport() }
+    catch { setReportState('error') }
+  }
+
   return (
     <section className="response-stream" aria-labelledby="responses-heading">
       <header className="response-stream__header">
@@ -75,7 +88,7 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
       {status === 'empty' && <div className="response-feed-state"><Sparkles aria-hidden="true" /><strong>No responses yet</strong><p>Be the first person to take this Ralli somewhere new.</p></div>}
       {status === 'success' && <div className="response-list">
         {orderedResponses.map((response) => <article className="response-post" key={response.id}>
-          <header><Avatar initials={response.initials} avatarUrl={response.authorAvatarUrl} className="avatar--response avatar--lime" /><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div>{user?.id !== response.authorId && <button className="response-more" type="button" aria-label={`Report ${response.author}'s response`} onClick={() => { setReportTarget(response); setReportState('idle') }}><MoreHorizontal aria-hidden="true" /></button>}</header>
+          <header><Avatar initials={response.initials} avatarUrl={response.authorAvatarUrl} className="avatar--response avatar--lime" /><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div>{user?.id === response.authorId ? <button className="response-more" type="button" aria-label="Delete your response" onClick={() => void removeResponse(response)}><X aria-hidden="true" /></button> : <button className="response-more" type="button" aria-label={`Report or block ${response.author}`} onClick={() => { setReportTarget(response); setReportState('idle') }}><MoreHorizontal aria-hidden="true" /></button>}</header>
           {response.copy && response.mediaUrl && <p className="response-post__copy">{response.copy}</p>}
           {response.mediaUrl && response.format === 'video' && <video className="response-post__image" src={response.mediaUrl} controls preload="metadata" />}
           {response.mediaUrl && response.format === 'photo' && <img className="response-post__image" src={response.mediaUrl} alt={`${response.author}'s response to ${prompt}`} width="720" height="520" loading="lazy" decoding="async" />}
@@ -98,6 +111,7 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
             {reportState === 'error' && <p className="payment-error" role="alert">The report could not be sent. Check your connection and try again.</p>}
             {!user && <p className="payment-error" role="alert">Connect your wallet before reporting a response.</p>}
             <button className="button button--ink button--wide" type="submit" disabled={!user || reportState === 'saving'} aria-busy={reportState === 'saving'}><Flag aria-hidden="true" />{reportState === 'saving' ? 'Sending report…' : 'Send report'}</button>
+            <button className="button button--soft button--wide" type="button" disabled={!user} onClick={() => void blockAuthor()}>Block {reportTarget.author}</button>
           </form>}
         </section>
       </div>}
