@@ -9,6 +9,7 @@ import type { Dare } from '../discover/DareCard.tsx'
 import { hasResponded } from '../../lib/responses.ts'
 import { useBackend } from '../../store/backend.ts'
 import { PassItOn } from '../chains/PassItOn.tsx'
+import { Comments } from '../responses/Comments.tsx'
 
 function hoursLeft(endsAt?: string) {
   if (!endsAt) return '—'
@@ -24,6 +25,7 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
   const [boostOpen, setBoostOpen] = useState(false)
   const [joinedFromBackend, setJoinedFromBackend] = useState(false)
   const [passOpen, setPassOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
   const { user } = useBackend()
   const joined = Boolean(unlockedResponseId) || joinedFromBackend
   const isCreator = Boolean(user && ralli.creatorId === user.id)
@@ -87,6 +89,7 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
 
           {joined && unlockedResponseId && <section className="reciprocity-unlocked" aria-live="polite"><span><Check aria-hidden="true" /></span><div><p className="eyebrow">You showed up</p><h2>Everyone’s responses are unlocked.</h2><p>See their takes, react, then keep the challenge moving.</p></div><button className="button button--ink" type="button" onClick={() => setPassOpen(true)}>Challenge someone <Repeat2 aria-hidden="true" /></button></section>}
           <ResponseViewer ralliId={ralli.id} prompt={ralli.prompt} locked={!responsesUnlocked} onJoin={onJoin} />
+          <section className="ralli-conversation" aria-labelledby="ralli-conversation-title"><div><p className="eyebrow">Talk about this Ralli</p><h2 id="ralli-conversation-title">Ralli conversation</h2></div><Comments ralliId={ralli.id} expanded={commentsOpen} onToggle={() => setCommentsOpen((value) => !value)} /></section>
         </div>
 
         <footer className="flow-actions">

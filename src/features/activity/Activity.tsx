@@ -18,6 +18,7 @@ const presentation = {
   invitation: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} challenged you to a Ralli`, action: 'Respond', kind: 'Social' },
   invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, action: 'Watch response', kind: 'Social' },
   payment_confirmed: { icon: Sparkles, tone: 'lime', title: () => 'Your NIM payment was confirmed', action: 'View Ralli', kind: 'NIM' },
+  comment: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} commented on your post`, action: 'View comment', kind: 'Social' },
 } as const
 
 function relativeTime(value: string) {

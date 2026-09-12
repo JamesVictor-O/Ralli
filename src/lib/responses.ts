@@ -18,6 +18,7 @@ export interface RalliResponse {
   reactions: number
   selectedReaction: string | null
   tips: number
+  comments: number
 }
 
 function initials(value: string) {
@@ -41,14 +42,16 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
   if (!visibleRows.length) return []
   const authorIds = [...new Set(visibleRows.map((row) => row.author_id))]
   const responseIds = visibleRows.map((row) => row.id)
-  const [profilesResult, reactionsResult, tipsResult] = await Promise.all([
+  const [profilesResult, reactionsResult, tipsResult, commentsResult] = await Promise.all([
     database.from('profiles').select('id, display_name, handle, avatar_path, nimiq_address, nimiq_address_verified_at').in('id', authorIds),
     database.from('reactions').select('*').in('response_id', responseIds),
     database.from('response_tips').select('*').in('response_id', responseIds).eq('status', 'confirmed'),
+    database.from('comments').select('response_id').in('response_id', responseIds),
   ])
   if (profilesResult.error) throw profilesResult.error
   if (reactionsResult.error) throw reactionsResult.error
   if (tipsResult.error) throw tipsResult.error
+  if (commentsResult.error) throw commentsResult.error
 
   const profiles = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]))
   return visibleRows.map((row) => {
@@ -73,6 +76,7 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
       reactions: reactions.length,
       selectedReaction: reactions.find((reaction) => reaction.user_id === viewerId)?.kind ?? null,
       tips: tipLuna / LUNA_PER_NIM,
+      comments: (commentsResult.data ?? []).filter((comment) => comment.response_id === row.id).length,
     }
   })
 }

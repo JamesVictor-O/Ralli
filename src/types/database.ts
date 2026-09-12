@@ -59,6 +59,7 @@ type CommunityRow = { id: string; slug: string; name: string; icon: string; desc
 type CommunityMemberRow = { community_id: string; user_id: string; role: Database['public']['Enums']['community_role']; joined_at: string }
 type CommunityDailyRalliRow = { community_id: string; ralli_id: string; active_date: string; created_at: string }
 type ProductEventRow = { id: number; user_id: string; session_id: string; event_name: string; source: string | null; ralli_id: string | null; response_id: string | null; community_id: string | null; properties: Json; created_at: string }
+type CommentRow = { id: string; ralli_id: string; response_id: string | null; author_id: string; body: string; created_at: string }
 
 export type CommunityDirectoryRow = {
   id: string | null
@@ -186,6 +187,12 @@ export interface Database {
       product_events: {
         Row: ProductEventRow
         Insert: Omit<ProductEventRow, 'id' | 'created_at'>
+        Update: never
+        Relationships: []
+      }
+      comments: {
+        Row: CommentRow
+        Insert: Omit<CommentRow, 'id' | 'created_at'>
         Update: never
         Relationships: []
       }

@@ -112,7 +112,7 @@ export function TipChip({ responseId, recipientAddress, author, initialTotal = 0
         aria-label={disabled ? `${author} hasn't verified a wallet yet` : status !== 'connected' ? `Connect your wallet to tip ${author}` : `Tip ${author} 1 NIM`}
         onClick={() => review('1')}>
         {sending ? <LoaderCircle className="spin" aria-hidden="true" /> : <Coins aria-hidden="true" />}
-        <span>{total > 0 ? `${total} NIM` : '+1 NIM'}</span>
+        <span>{total > 0 ? `${total} NIM tipped` : 'Tip with NIM'}</span>
       </button>
       {!disabled && (
         <button className="tip-chip__caret" type="button" aria-label="Choose a tip amount" aria-expanded={pickerOpen}

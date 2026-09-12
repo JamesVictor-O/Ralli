@@ -10,6 +10,7 @@ import { useDialogFocus } from '../../hooks/useDialogFocus.ts'
 import { actionableError } from '../../lib/errors.ts'
 import { FeedVideo } from '../../components/media/FeedVideo.tsx'
 import { trackProductEvent } from '../../lib/analytics.ts'
+import { Comments } from './Comments.tsx'
 
 type Sort = 'Popular' | 'Newest'
 
@@ -30,6 +31,7 @@ export function ResponseViewer({ ralliId, prompt, locked = false, onJoin }: { ra
   const [reportTarget, setReportTarget] = useState<RalliResponse | null>(null)
   const [reportState, setReportState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [reportReason, setReportReason] = useState<'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'>('spam')
+  const [commentsOpen, setCommentsOpen] = useState<string | null>(null)
   const reportDialogRef = useRef<HTMLElement>(null)
   const viewedForRalli = useRef<string | null>(null)
   const { user } = useBackend()
@@ -104,6 +106,7 @@ export function ResponseViewer({ ralliId, prompt, locked = false, onJoin }: { ra
           {!response.mediaUrl && <div className="text-response"><span>“</span><p>{response.copy}</p></div>}
           <footer>
             <Reactions responseId={response.id} initialCount={response.reactions} initialSelected={response.selectedReaction} />
+            <Comments ralliId={ralliId} responseId={response.id} initialCount={response.comments} expanded={commentsOpen === response.id} onToggle={() => setCommentsOpen((current) => current === response.id ? null : response.id)} />
             <TipChip responseId={response.id} recipientAddress={response.authorAddress} author={response.author} initialTotal={response.tips} />
             <button type="button" onClick={() => setPassResponse(response)}><Repeat2 aria-hidden="true" /><span>Pass it on</span></button>
             <button type="button" aria-label="Share response" onClick={() => void navigator.share?.({ title: prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralliId}` })}><Share2 aria-hidden="true" /></button>

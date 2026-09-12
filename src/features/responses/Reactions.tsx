@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { setReaction } from '../../lib/responses.ts'
 import { ensureVerifiedProfile } from '../../lib/social.ts'
 import { useBackend } from '../../store/backend.ts'
@@ -22,8 +23,22 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
   const [count, setCount] = useState(initialCount)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   const { user } = useBackend()
   const { account } = useWallet()
+
+  useEffect(() => {
+    function close(event: PointerEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
+    }
+    function closeWithKeyboard(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', closeWithKeyboard)
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', closeWithKeyboard) }
+  }, [])
 
   async function react(label: string) {
     if (saving) return
@@ -41,6 +56,7 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
     try {
       await ensureVerifiedProfile(user.id, account)
       await setReaction(responseId, user.id, previous ? reactionKinds[previous] : null, next ? reactionKinds[next] : null)
+      setOpen(false)
     } catch (failure) {
       setSelected(previous)
       setCount(previousCount)
@@ -51,16 +67,13 @@ export function Reactions({ responseId, initialCount = 0, initialSelected = null
   }
 
   return (
-    <div className={`response-reactions ${compact ? 'response-reactions--compact' : ''}`} aria-label="React to this response">
-      {reactionOptions.map((reaction) => (
-        <button className={selected === reaction.label ? 'is-selected' : ''} type="button"
-          aria-label={reaction.label} aria-pressed={selected === reaction.label} key={reaction.label}
-          disabled={saving} onClick={() => void react(reaction.label)}>
-          <span aria-hidden="true">{reaction.emoji}</span>
-          {!compact && <small>{reaction.label}</small>}
-        </button>
-      ))}
-      <span className="reaction-total">{count}</span>
+    <div className={`response-reactions ${compact ? 'response-reactions--compact' : ''}`} ref={rootRef} aria-label="React to this response">
+      <button className={`reaction-trigger ${selected ? 'is-selected' : ''}`} type="button" aria-expanded={open} disabled={saving} onClick={() => setOpen((value) => !value)}>
+        <span aria-hidden="true">{reactionOptions.find((option) => option.label === selected)?.emoji ?? '♡'}</span><small>{selected ?? 'React'}</small>{count > 0 && <strong>{count}</strong>}<ChevronDown aria-hidden="true" />
+      </button>
+      {open && <div className="reaction-picker" role="group" aria-label="Choose a reaction">{reactionOptions.map((reaction) => (
+        <button className={selected === reaction.label ? 'is-selected' : ''} type="button" aria-label={reaction.label} aria-pressed={selected === reaction.label} key={reaction.label} disabled={saving} onClick={() => void react(reaction.label)}><span aria-hidden="true">{reaction.emoji}</span><small>{reaction.label}</small></button>
+      ))}</div>}
       {error && <span className="reaction-error" role="alert">{error}</span>}
     </div>
   )
