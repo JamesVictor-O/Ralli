@@ -62,7 +62,10 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
         <div className="detail-body">
           <div className="author detail-author">
             <Avatar initials={ralli.initials} avatarUrl={ralli.authorAvatarUrl} className="avatar--author avatar--coral" />
-            <span><strong>{ralli.author} started this Ralli</strong><small>{ralli.time} ago</small></span>
+            <span className="detail-author__copy">
+              <span><strong>{ralli.author}</strong><span>started this Ralli</span></span>
+              <small>{ralli.time} ago</small>
+            </span>
             <button className="icon-button" type="button" aria-label="Share Ralli" onClick={() => void navigator.share?.({ title: ralli.prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralli.id}` })}><Share2 aria-hidden="true" /></button>
           </div>
           <h1 id="ralli-title">{ralli.prompt}</h1>

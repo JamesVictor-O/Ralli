@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { LoaderCircle, Search, Sparkles, UsersRound } from 'lucide-react'
+import { LoaderCircle, Plus, Search, Sparkles, UsersRound } from 'lucide-react'
 import type { Dare } from '../discover/DareCard.tsx'
 import { CommunityCard } from './CommunityCard.tsx'
 import { CommunityDetail } from './CommunityDetail.tsx'
@@ -7,6 +7,7 @@ import { fetchCommunities, setCommunityMembership, type Community } from '../../
 import { useBackend } from '../../store/backend.ts'
 import { actionableError } from '../../lib/errors.ts'
 import { trackProductEvent } from '../../lib/analytics.ts'
+import { CreateCommunity } from './CreateCommunity.tsx'
 
 export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRalli, onBoost, onCreate }: {
   initialSlug?: string | null
@@ -21,6 +22,7 @@ export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRal
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -61,7 +63,7 @@ export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRal
 
   return (
     <section className="community-hub">
-      <header className="community-hub__hero"><span className="community-hub__mark"><UsersRound aria-hidden="true" /></span><div><p className="eyebrow">Find your people</p><h1>Do more of what you love. Together.</h1><p>Communities are places where the next Ralli, response, and chain starts with people who are into the same things.</p></div></header>
+      <header className="community-hub__hero"><span className="community-hub__mark"><UsersRound aria-hidden="true" /></span><div><p className="eyebrow">Find your people</p><h1>Do more of what you love. Together.</h1><p>Communities are places where the next Ralli, response, and chain starts with people who are into the same things.</p><button className="button button--ink community-hub__create" type="button" disabled={!user} onClick={() => setCreating(true)}><Plus aria-hidden="true" /> Create a community</button></div></header>
       <label className="community-search"><Search aria-hidden="true" /><span className="sr-only">Search communities</span><input type="search" placeholder="Search photography, music, Nigeria…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       {error && <p className="payment-error" role="alert">{error}</p>}
       {loading ? <div className="community-loading" role="status"><LoaderCircle className="spin" aria-hidden="true" /> Finding your communities…</div> : (
@@ -69,10 +71,11 @@ export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRal
           {communities.some((community) => community.joined) && !query && <section className="community-group" aria-labelledby="your-communities"><div className="community-group__heading"><p className="eyebrow">Come back together</p><h2 id="your-communities">Your communities</h2></div><div className="community-grid">{communities.filter((community) => community.joined).map((community) => <CommunityCard key={community.id} community={community} onOpen={() => open(community.slug)} onMembership={() => void toggle(community)} />)}</div></section>}
           <section className="community-group" aria-labelledby="discover-communities"><div className="community-group__heading"><p className="eyebrow">Suggested for you</p><h2 id="discover-communities">Places worth joining</h2></div>
             {discoverable.length ? <div className="community-grid">{discoverable.map((community) => <CommunityCard key={community.id} community={community} onOpen={() => open(community.slug)} onMembership={() => void toggle(community)} />)}</div>
-              : <div className="community-empty"><span><Sparkles aria-hidden="true" /></span><h3>No community matches that yet.</h3><p>Try another interest. New places will grow as Ralli grows.</p></div>}
+              : <div className="community-empty"><span><Sparkles aria-hidden="true" /></span><h3>No community matches that yet.</h3><p>Start the place you hoped to find and invite people to show up with you.</p><button className="button button--ink" type="button" disabled={!user} onClick={() => setCreating(true)}>Create this community</button></div>}
           </section>
         </>
       )}
+      {creating && <CreateCommunity onClose={() => setCreating(false)} onCreated={(slug) => { setCreating(false); void load(); open(slug) }} />}
     </section>
   )
 }

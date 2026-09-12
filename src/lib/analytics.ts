@@ -12,6 +12,7 @@ export type ProductEventName =
   | 'invitation_accepted'
   | 'community_opened'
   | 'community_joined'
+  | 'community_created'
 
 export interface ProductEventContext {
   userId: string

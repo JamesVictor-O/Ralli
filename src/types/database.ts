@@ -217,6 +217,10 @@ export interface Database {
       create_ralli_invitation: { Args: { target_ralli: string; source_response: string | null }; Returns: string }
       open_ralli_invitation: { Args: { invite_token: string }; Returns: Array<{ ralli_id: string; prompt: string; sender_name: string; status: Database['public']['Enums']['invitation_status'] }> }
       accept_ralli_invitation: { Args: { invite_token: string }; Returns: string }
+      create_community: {
+        Args: { community_name: string; community_icon: string; community_description: string }
+        Returns: Array<{ id: string; slug: string }>
+      }
     }
     Enums: {
       ralli_status: 'draft' | 'active' | 'judging' | 'settled' | 'cancelled'

@@ -111,6 +111,18 @@ export async function setCommunityMembership(communityId: string, userId: string
   if (error) throw error
 }
 
+export async function createCommunity(input: { name: string; icon: string; description: string }) {
+  const { data, error } = await requireSupabase().rpc('create_community', {
+    community_name: input.name.trim(),
+    community_icon: input.icon.trim() || '🎉',
+    community_description: input.description.trim(),
+  })
+  if (error) throw error
+  const created = data?.[0]
+  if (!created) throw new Error('The community was not created. Please try again.')
+  return created
+}
+
 export async function fetchCommunityDetail(slug: string, userId?: string | null): Promise<CommunityDetailData> {
   const database = requireSupabase()
   const [communityResult, membershipResult] = await Promise.all([
