@@ -10,14 +10,14 @@ type Filter = 'All' | 'Social' | 'NIM'
 type ActivityRow = Database['public']['Tables']['activity_events']['Row']
 
 const presentation = {
-  reaction: { icon: Heart, tone: 'coral', title: (actor: string) => `${actor} reacted to your response`, kind: 'Social' },
-  pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, kind: 'Social' },
-  response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, kind: 'Social' },
-  tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, kind: 'NIM' },
-  boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} sent you a Ralli boost`, kind: 'NIM' },
-  invitation: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} challenged you to a Ralli`, kind: 'Social' },
-  invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, kind: 'Social' },
-  payment_confirmed: { icon: Sparkles, tone: 'lime', title: () => 'Your NIM payment was confirmed', kind: 'NIM' },
+  reaction: { icon: Heart, tone: 'coral', title: (actor: string) => `${actor} reacted to your response`, action: 'View response', kind: 'Social' },
+  pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, action: 'See chain', kind: 'Social' },
+  response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, action: 'Watch response', kind: 'Social' },
+  tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, action: 'View response', kind: 'NIM' },
+  boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} sent you a Ralli boost`, action: 'View Ralli', kind: 'NIM' },
+  invitation: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} challenged you to a Ralli`, action: 'Respond', kind: 'Social' },
+  invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, action: 'Watch response', kind: 'Social' },
+  payment_confirmed: { icon: Sparkles, tone: 'lime', title: () => 'Your NIM payment was confirmed', action: 'View Ralli', kind: 'NIM' },
 } as const
 
 function relativeTime(value: string) {
@@ -28,7 +28,7 @@ function relativeTime(value: string) {
   return `${Math.floor(minutes / 1_440)}d`
 }
 
-export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) => void; onRead?: () => void }) {
+export function Activity({ onOpenRalli, onJoinRalli, onRead }: { onOpenRalli: (ralli: Dare) => void; onJoinRalli: (ralli: Dare) => void; onRead?: () => void }) {
   const [filter, setFilter] = useState<Filter>('All')
   const [events, setEvents] = useState<ActivityRow[]>([])
   const [actorNames, setActorNames] = useState<Record<string, string>>({})
@@ -85,7 +85,8 @@ export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) =
         }
       }
       const ralli = await fetchRalliById(event.ralli_id)
-      onOpenRalli(ralli)
+      if (event.kind === 'invitation') onJoinRalli(ralli)
+      else onOpenRalli(ralli)
     } catch {
       // The Ralli may have been removed since the event was recorded — nothing to open.
     } finally {
@@ -96,7 +97,7 @@ export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) =
   const visibleEvents = events.filter((event) => {
     const item = presentation[event.kind as keyof typeof presentation]
     return filter === 'All' || item?.kind === filter
-  })
+  }).sort((a, b) => Number(!b.read_at) - Number(!a.read_at))
 
   return <section className="page-view" aria-labelledby="activity-title">
     <header className="page-heading"><div><p className="eyebrow">Stay in the loop</p><h1 id="activity-title">Activity</h1></div><button className="text-action" type="button" disabled={!events.some((event) => !event.read_at)} onClick={() => void markAllRead()}>Mark all as read</button></header>
@@ -104,7 +105,7 @@ export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) =
     {status === 'loading' && <div className="empty-state" aria-busy="true"><span className="empty-state__icon"><LoaderCircle className="spin" aria-hidden="true" /></span><h2>Loading activity…</h2></div>}
     {status === 'error' && <div className="empty-state" role="alert"><span className="empty-state__icon"><AlertCircle aria-hidden="true" /></span><h2>Activity didn’t load</h2><button className="button button--ink" type="button" onClick={() => void load()}>Try again</button></div>}
     {(status === 'empty' || (status === 'success' && !visibleEvents.length)) && <div className="empty-state"><span className="empty-state__icon"><Bell aria-hidden="true" /></span><h2>All caught up</h2><p>Your reactions, passes, tips, and boosts will appear here.</p></div>}
-    {status === 'success' && visibleEvents.length > 0 && <div className="activity-list"><section className="activity-group" aria-labelledby="activity-recent"><h2 id="activity-recent">Recent</h2><div className="activity-card">{visibleEvents.map((event) => {
+    {status === 'success' && visibleEvents.length > 0 && <div className="activity-list"><section className="activity-group" aria-labelledby="activity-recent"><h2 id="activity-recent">Your next moves</h2><div className="activity-card">{visibleEvents.map((event) => {
       const item = presentation[event.kind as keyof typeof presentation] ?? presentation.response
       const Icon = item.icon
       const actor = (event.actor_id && actorNames[event.actor_id]) || 'Someone'
@@ -113,7 +114,7 @@ export function Activity({ onOpenRalli, onRead }: { onOpenRalli: (ralli: Dare) =
         <button className="activity-row" type="button" key={event.id} disabled={!openable || openingId === event.id}
           aria-busy={openingId === event.id} onClick={() => void openEvent(event)}>
           <span className={`event-icon event-icon--${item.tone}`}><Icon aria-hidden="true" /></span>
-          <span className="activity-row__copy"><strong>{item.title(actor)}</strong></span>
+          <span className="activity-row__copy"><strong>{item.title(actor)}</strong>{openable && <small>{item.action}</small>}</span>
           <span className="activity-row__time">{relativeTime(event.created_at)} ago</span>
           {!event.read_at && <span className="unread-dot"><span className="sr-only">Unread</span></span>}
           {openingId === event.id ? <LoaderCircle className="spin" aria-hidden="true" /> : openable && <ChevronRight aria-hidden="true" />}

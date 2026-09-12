@@ -1,15 +1,19 @@
 import { type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, Coins, Heart, UsersRound } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar.tsx'
+import { useBackend } from '../../store/backend.ts'
 
 export interface Dare {
   id: string; author: string; initials: string; authorAvatarUrl: string | null; time: string; prompt: string; category: string
   participants: number; reactions: number; passes: number; reward: number; starterReward: number; boosts: number; boostCount: number; image: string; imageAlt: string
   tone: 'coral' | 'violet'
   description?: string; endsAt?: string; creatorId?: string
+  viewerResponded?: boolean
 }
 
 export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen: () => void; onJoin: () => void; onBoost: () => void }) {
+  const { user } = useBackend()
+  const canViewResponses = dare.viewerResponded || Boolean(user && dare.creatorId === user.id)
   function isInteractiveTarget(target: EventTarget | null) {
     return target instanceof Element && Boolean(target.closest('button, a, input, textarea, select, [role="button"]'))
   }
@@ -50,7 +54,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
         <button className="nim-pool-chip" type="button" onClick={onBoost} aria-label={`${dare.reward} NIM sent to this creator — tap to boost them`}>
           <Coins aria-hidden="true" /><span>{dare.reward} NIM</span>
         </button>
-        <button className="join-button" type="button" onClick={onJoin}>Join Ralli <ChevronRight aria-hidden="true" /></button>
+        <button className="join-button" type="button" onClick={canViewResponses ? onOpen : onJoin}>{canViewResponses ? 'See responses' : 'Join Ralli'} <ChevronRight aria-hidden="true" /></button>
       </div>
     </article>
   )

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LoaderCircle, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 
-export function FeedVideo({ src, className = '', compact = false }: { src: string; className?: string; compact?: boolean }) {
+export function FeedVideo({ src, poster, className = '', compact = false }: { src: string; poster?: string | null; className?: string; compact?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const visibleRef = useRef(false)
   const [shouldLoad, setShouldLoad] = useState(false)
@@ -22,7 +22,7 @@ export function FeedVideo({ src, className = '', compact = false }: { src: strin
       } else if (!visibleRef.current) {
         video.pause()
       }
-    }, { rootMargin: '500px 0px', threshold: [0, 0.65, 1] })
+    }, { rootMargin: '700px 0px', threshold: [0, 0.65, 1] })
     observer.observe(video)
     const onVisibility = () => document.hidden ? video.pause() : visibleRef.current && void video.play().catch(() => setNeedsPlay(true))
     document.addEventListener('visibilitychange', onVisibility)
@@ -46,7 +46,7 @@ export function FeedVideo({ src, className = '', compact = false }: { src: strin
 
   return (
     <div className={`feed-video ${compact ? 'feed-video--compact' : ''} ${playing ? 'is-playing' : ''} ${className}`}>
-      <video ref={videoRef} src={shouldLoad ? src : undefined} muted={muted} playsInline loop preload={shouldLoad ? 'auto' : 'none'}
+      <video ref={videoRef} src={shouldLoad ? src : undefined} poster={poster ?? undefined} muted={muted} playsInline loop preload={shouldLoad ? 'metadata' : 'none'}
         onCanPlay={() => { setReady(true); if (visibleRef.current) void videoRef.current?.play().catch(() => setNeedsPlay(true)) }}
         onPlaying={() => { setPlaying(true); setNeedsPlay(false) }} onPause={() => setPlaying(false)} />
       {!ready && shouldLoad && <span className="feed-video__loading" role="status" aria-label="Loading video"><LoaderCircle className="spin" aria-hidden="true" /></span>}

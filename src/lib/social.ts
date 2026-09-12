@@ -47,6 +47,9 @@ export interface CreateResponseInput {
   format: 'photo' | 'video' | 'text'
   text: string
   media?: File | null
+  poster?: File | null
+  uploadedMediaPath?: string | null
+  uploadedPosterPath?: string | null
   onStage?: (stage: 'upload' | 'publish') => void
   onUploadProgress?: (percentage: number) => void
 }
@@ -55,11 +58,17 @@ export async function createResponse(input: CreateResponseInput) {
   // Location is optional and cached. Start it alongside media work so a slow geo
   // endpoint never adds another serial wait after the upload completes.
   const geoPromise = fetchViewerGeo()
-  let mediaPath: string | null = null
-  if (input.media) {
+  let mediaPath: string | null = input.uploadedMediaPath ?? null
+  let mediaPosterPath: string | null = input.uploadedPosterPath ?? null
+  if (input.media && !mediaPath) {
     input.onStage?.('upload')
     try {
-      mediaPath = await uploadRalliMedia(input.userId, 'responses', input.media, input.onUploadProgress)
+      const [uploadedMedia, uploadedPoster] = await Promise.all([
+        uploadRalliMedia(input.userId, 'responses', input.media, input.onUploadProgress),
+        input.poster ? uploadRalliMedia(input.userId, 'responses', input.poster) : Promise.resolve(null),
+      ])
+      mediaPath = uploadedMedia
+      mediaPosterPath = uploadedPoster
     } catch (error) {
       throw new Error(friendlyNetworkError(error, 'uploading your response'), { cause: error })
     }
@@ -72,6 +81,7 @@ export async function createResponse(input: CreateResponseInput) {
     format: input.format,
     text_content: input.text.trim() || null,
     media_path: mediaPath,
+    media_poster_path: mediaPosterPath,
     city: geo.city,
     country: geo.country,
     flag: geo.flag,

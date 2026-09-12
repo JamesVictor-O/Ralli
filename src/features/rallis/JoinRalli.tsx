@@ -3,21 +3,22 @@ import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, X } from 'l
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
-import { isImageFile, isVideoFile, optimizeResponseImage, validateMedia } from '../../lib/media.ts'
+import { createVideoPoster, isImageFile, isVideoFile, optimizeResponseImage, uploadRalliMedia, validateMedia } from '../../lib/media.ts'
 import { fetchViewerGeo } from '../../lib/geo.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
-import { PassItOn } from '../chains/PassItOn.tsx'
 import { actionableError } from '../../lib/errors.ts'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 interface JoinRalliProps {
   ralliId: string
   prompt: string
   onBack: () => void
   onClose: () => void
-  onPosted?: () => void
+  onSeeResponses: (responseId: string) => void
+  onPosted?: (responseId: string) => void
 }
 
-export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRalliProps) {
+export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, onPosted }: JoinRalliProps) {
   const [format, setFormat] = useState<'photo' | 'video' | 'text'>('photo')
   const [caption, setCaption] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -30,10 +31,11 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
   const [submitStage, setSubmitStage] = useState<'wallet' | 'prepare' | 'upload' | 'publish'>('wallet')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [responseId, setResponseId] = useState<string | null>(null)
-  const [passOpen, setPassOpen] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
   const mediaOptimizationRef = useRef<Promise<File> | null>(null)
+  const videoPosterRef = useRef<Promise<File | null> | null>(null)
+  const earlyVideoUploadRef = useRef<Promise<{ mediaPath: string; posterPath: string | null } | null> | null>(null)
   const mediaSelectionRef = useRef(0)
   const { status: backendStatus, user, error: backendError } = useBackend()
   const { account } = useWallet()
@@ -65,6 +67,9 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
       setMedia(file)
       setPreview(URL.createObjectURL(file))
       setMediaSavings('')
+      setUploadProgress(0)
+      earlyVideoUploadRef.current = null
+      videoPosterRef.current = null
       setError('')
       const selection = mediaSelectionRef.current + 1
       mediaSelectionRef.current = selection
@@ -86,7 +91,26 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
         })
       } else {
         mediaOptimizationRef.current = null
-        setMediaPreparing(false)
+        const posterPromise = createVideoPoster(file)
+        videoPosterRef.current = posterPromise
+        // Social apps hide upload latency by starting as soon as a clip is selected,
+        // while the person is still reviewing it or writing a caption.
+        if (user) {
+          setMediaPreparing(true)
+          const earlyUpload = (async () => {
+            const poster = await posterPromise.catch(() => null)
+            const [mediaPath, posterPath] = await Promise.all([
+              uploadRalliMedia(user.id, 'responses', file, setUploadProgress),
+              poster ? uploadRalliMedia(user.id, 'responses', poster) : Promise.resolve(null),
+            ])
+            return { mediaPath, posterPath }
+          })().catch(() => null).finally(() => {
+            if (mediaSelectionRef.current === selection) setMediaPreparing(false)
+          })
+          earlyVideoUploadRef.current = earlyUpload
+        } else {
+          setMediaPreparing(false)
+        }
       }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'That media could not be used.')
@@ -110,10 +134,15 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
       await ensureWalletAttached(user.id, account)
       if (mediaOptimizationRef.current && mediaPreparing) setSubmitStage('prepare')
       const preparedMedia = mediaOptimizationRef.current ? await mediaOptimizationRef.current.catch(() => media) : media
-      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: preparedMedia, onStage: setSubmitStage, onUploadProgress: setUploadProgress })
+      const poster = videoPosterRef.current ? await videoPosterRef.current.catch(() => null) : null
+      if (earlyVideoUploadRef.current) setSubmitStage('upload')
+      const earlyUpload = earlyVideoUploadRef.current ? await earlyVideoUploadRef.current : null
+      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: earlyUpload ? null : preparedMedia, poster: earlyUpload ? null : poster, uploadedMediaPath: earlyUpload?.mediaPath, uploadedPosterPath: earlyUpload?.posterPath, onStage: setSubmitStage, onUploadProgress: setUploadProgress })
+      trackProductEvent('response_published', { userId: user.id, ralliId, responseId: createdResponseId, source: 'response_flow', properties: { format } })
       setResponseId(createdResponseId)
       setSubmitted(true)
-      onPosted?.()
+      onPosted?.(createdResponseId)
+      window.setTimeout(() => onSeeResponses(createdResponseId), 900)
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : 'Your response could not be posted.'
       if (/one_response_per_ralli|duplicate key/i.test(message)) setError('You already responded to this Ralli.')
@@ -131,12 +160,10 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
           <span className="success-burst" aria-hidden="true"><Check /></span>
           <p className="eyebrow">You joined the Ralli</p>
           <h1 id="joined-title">That’s in the chain.</h1>
-          <p>Your response is ready. Pass it to someone and keep the Ralli moving.</p>
+          <p>You showed up. Unlocking everyone’s responses…</p>
           <div className="success-actions">
-            <button className="button button--ink button--wide" type="button" onClick={() => setPassOpen(true)}>Pass it on</button>
-            <button className="button button--soft button--wide" type="button" onClick={onClose}>Back to Discover</button>
+            <button className="button button--ink button--wide" type="button" onClick={() => responseId && onSeeResponses(responseId)}>See everyone’s responses</button>
           </div>
-          {passOpen && responseId && <PassItOn ralliId={ralliId} responseId={responseId} prompt={prompt} responseAuthor="You" onClose={() => setPassOpen(false)} />}
         </section>
       </div>
     )
@@ -161,7 +188,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
             { value: 'video' as const, icon: Video, label: 'Video' },
             { value: 'text' as const, icon: Type, label: 'Text' },
           ].map(({ value, icon: Icon, label }) => (
-            <button className={format === value ? 'is-active' : ''} type="button" key={value} onClick={() => { setFormat(value); setMedia(null); setPreview(null); setMediaSavings(''); mediaOptimizationRef.current = null; setError('') }}>
+            <button className={format === value ? 'is-active' : ''} type="button" key={value} onClick={() => { setFormat(value); setMedia(null); setPreview(null); setMediaSavings(''); mediaOptimizationRef.current = null; videoPosterRef.current = null; earlyVideoUploadRef.current = null; setUploadProgress(0); setError('') }}>
               <Icon aria-hidden="true" /><span>{label}</span>
             </button>
           ))}
@@ -179,7 +206,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onPosted }: JoinRa
               <input className="sr-only" ref={libraryRef} type="file" accept={format === 'photo' ? 'image/*' : 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v'} onChange={chooseMedia} />
               {preview ? (format === 'photo' ? <img className="capture-preview" src={preview} alt="Response preview" /> : <video className="capture-preview" src={preview} controls />) : <span className="capture-icon">{format === 'photo' ? <Camera aria-hidden="true" /> : <Video aria-hidden="true" />}</span>}
               <div><strong>{format === 'photo' ? 'Take a photo' : 'Record a video'}</strong><p>Use your camera or choose something you already captured.</p></div>
-              {media && <p className="capture-preparation" role="status">{mediaPreparing ? 'Preparing a faster upload…' : mediaSavings || (format === 'video' ? 'Video ready to upload' : 'Photo ready to post')}</p>}
+              {media && <p className="capture-preparation" role="status">{mediaPreparing ? format === 'video' && uploadProgress ? `Uploading in the background · ${uploadProgress}%` : 'Preparing a faster upload…' : mediaSavings || (format === 'video' ? 'Video ready to post' : 'Photo ready to post')}</p>}
               <div className="capture-actions">
                 <button className="button button--ink" type="button" onClick={() => cameraRef.current?.click()}><Camera aria-hidden="true" />Open camera</button>
                 <button className="button button--soft" type="button" onClick={() => libraryRef.current?.click()}><Image aria-hidden="true" />Choose media</button>

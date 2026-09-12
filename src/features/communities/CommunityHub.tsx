@@ -6,6 +6,7 @@ import { CommunityDetail } from './CommunityDetail.tsx'
 import { fetchCommunities, setCommunityMembership, type Community } from '../../lib/communities.ts'
 import { useBackend } from '../../store/backend.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRalli, onBoost, onCreate }: {
   initialSlug?: string | null
@@ -36,12 +37,20 @@ export function CommunityHub({ initialSlug, onSlugChange, onOpenRalli, onJoinRal
   }, [communities, query])
   const discoverable = query ? filtered : filtered.filter((community) => !community.joined)
 
-  function open(slug: string | null) { onSlugChange(slug); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  function open(slug: string | null) {
+    const community = slug ? communities.find((item) => item.slug === slug) : null
+    if (user && community) trackProductEvent('community_opened', { userId: user.id, communityId: community.id, source: 'community_hub' })
+    onSlugChange(slug)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   async function toggle(community: Community) {
     if (!user) return
     const joined = !community.joined
     setCommunities((current) => current.map((item) => item.id === community.id ? { ...item, joined, members: Math.max(0, item.members + (joined ? 1 : -1)) } : item))
-    try { await setCommunityMembership(community.id, user.id, joined) }
+    try {
+      await setCommunityMembership(community.id, user.id, joined)
+      if (joined) trackProductEvent('community_joined', { userId: user.id, communityId: community.id, source: 'community_hub' })
+    }
     catch (failure) {
       setCommunities((current) => current.map((item) => item.id === community.id ? community : item))
       setError(actionableError(failure, 'Your community membership could not be updated.'))

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Clock3, Heart, Repeat2, Share2, UsersRound, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, Heart, Repeat2, Share2, UsersRound, X } from 'lucide-react'
 import { Boost } from '../rewards/Boost.tsx'
 import { RewardPool } from '../rewards/RewardPool.tsx'
 import { ResponseViewer } from '../responses/ResponseViewer.tsx'
 import { Avatar } from '../../components/ui/Avatar.tsx'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import type { Dare } from '../discover/DareCard.tsx'
+import { hasResponded } from '../../lib/responses.ts'
+import { useBackend } from '../../store/backend.ts'
+import { PassItOn } from '../chains/PassItOn.tsx'
 
 function hoursLeft(endsAt?: string) {
   if (!endsAt) return '—'
@@ -17,8 +20,14 @@ function isExpired(endsAt?: string) {
   return endsAt ? new Date(endsAt).getTime() <= Date.now() : false
 }
 
-export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: () => void; onJoin: () => void }) {
+export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ralli: Dare; unlockedResponseId?: string | null; onClose: () => void; onJoin: () => void }) {
   const [boostOpen, setBoostOpen] = useState(false)
+  const [joinedFromBackend, setJoinedFromBackend] = useState(false)
+  const [passOpen, setPassOpen] = useState(false)
+  const { user } = useBackend()
+  const joined = Boolean(unlockedResponseId) || joinedFromBackend
+  const isCreator = Boolean(user && ralli.creatorId === user.id)
+  const responsesUnlocked = joined || isCreator
   const expired = isExpired(ralli.endsAt)
   useBodyScrollLock()
   useEffect(() => {
@@ -26,6 +35,14 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose])
+  useEffect(() => {
+    let active = true
+    if (unlockedResponseId) return () => { active = false }
+    void (user ? hasResponded(ralli.id, user.id) : Promise.resolve(false))
+      .then((value) => { if (active) setJoinedFromBackend(value) })
+      .catch(() => { if (active) setJoinedFromBackend(false) })
+    return () => { active = false }
+  }, [ralli.id, unlockedResponseId, user])
 
   return (
     <div className="flow-backdrop" role="dialog" aria-modal="true" aria-labelledby="ralli-title">
@@ -36,7 +53,7 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
         </header>
 
         <div className="detail-hero">
-          <img src={ralli.image} alt={ralli.imageAlt} width="900" height="650" />
+          <img src={ralli.image} alt={ralli.imageAlt} width="900" height="650" fetchPriority="high" decoding="async" />
           <span className="pill pill--dark">{ralli.category}</span>
         </div>
 
@@ -68,16 +85,22 @@ export function RalliDetail({ ralli, onClose, onJoin }: { ralli: Dare; onClose: 
           </div>
           <RewardPool total={ralli.reward} boosts={ralli.boosts} onBoost={() => setBoostOpen(true)} />
 
-          <ResponseViewer ralliId={ralli.id} prompt={ralli.prompt} />
+          {joined && unlockedResponseId && <section className="reciprocity-unlocked" aria-live="polite"><span><Check aria-hidden="true" /></span><div><p className="eyebrow">You showed up</p><h2>Everyone’s responses are unlocked.</h2><p>See their takes, react, then keep the challenge moving.</p></div><button className="button button--ink" type="button" onClick={() => setPassOpen(true)}>Challenge someone <Repeat2 aria-hidden="true" /></button></section>}
+          <ResponseViewer ralliId={ralli.id} prompt={ralli.prompt} locked={!responsesUnlocked} onJoin={onJoin} />
         </div>
 
         <footer className="flow-actions">
           {expired
             ? <span className="ralli-ended-note">This Ralli has ended — no new responses can be posted.</span>
-            : <button className="button button--ink button--wide" type="button" onClick={onJoin}>Join this Ralli <ArrowLeft className="arrow-forward" aria-hidden="true" /></button>}
+            : isCreator
+              ? <span className="ralli-ended-note"><Check aria-hidden="true" /> You’re hosting this Ralli — responses are open to you</span>
+              : joined
+              ? <span className="ralli-ended-note"><Check aria-hidden="true" /> You showed up for this Ralli</span>
+              : <button className="button button--ink button--wide" type="button" onClick={onJoin}>Join this Ralli <ArrowLeft className="arrow-forward" aria-hidden="true" /></button>}
         </footer>
       </section>
       {boostOpen && <Boost ralliId={ralli.id} creator={ralli.author} ralli={ralli.prompt} pool={ralli.reward} onClose={() => setBoostOpen(false)} />}
+      {passOpen && unlockedResponseId && <PassItOn ralliId={ralli.id} responseId={unlockedResponseId} prompt={ralli.prompt} responseAuthor="You" onClose={() => setPassOpen(false)} />}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import type { CommunityDirectoryRow, RalliFeedRow } from '../types/database.ts'
 import { publicAvatarUrl, publicMediaUrl } from './media.ts'
 import { mapFeedRow } from './rallis.ts'
 import { requireSupabase } from './supabase.ts'
+import { hasResponded } from './responses.ts'
 
 export interface Community {
   id: string
@@ -36,8 +37,10 @@ export interface CommunityResponse {
   avatarUrl: string | null
   copy: string
   mediaUrl: string | null
+  posterUrl: string | null
   format: 'photo' | 'video' | 'text'
   reactions: number
+  familiar: boolean
 }
 
 export interface CommunityChain {
@@ -49,10 +52,16 @@ export interface CommunityChain {
 export interface CommunityDetailData {
   community: Community
   daily: Dare | null
+  dailyResponded: boolean
   happening: Dare[]
   chains: CommunityChain[]
   responses: CommunityResponse[]
   members: CommunityMember[]
+  accountability: {
+    familiarNames: string[]
+    weeklyLeader: { name: string; count: number } | null
+    longestChain: number
+  }
 }
 
 function initials(value: string) {
@@ -140,18 +149,33 @@ export async function fetchCommunityDetail(slug: string, userId?: string | null)
     ? database.from('ralli_passes').select('*').in('ralli_id', ralliIds).order('created_at', { ascending: true }).limit(500)
     : Promise.resolve({ data: [], error: null })
   const memberIds = (membersResult.data ?? []).map((member) => member.user_id)
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const weeklyResponseRequest = ralliIds.length
+    ? database.from('responses').select('author_id, created_at').in('ralli_id', ralliIds).neq('status', 'hidden').gte('created_at', weekStart)
+    : Promise.resolve({ data: [], error: null })
+  const connectionRequest = userId
+    ? database.from('ralli_invitations').select('sender_id, recipient_id').or(`sender_id.eq.${userId},recipient_id.eq.${userId}`).in('status', ['accepted', 'responded'])
+    : Promise.resolve({ data: [], error: null })
   const memberProfilesRequest = memberIds.length
     ? database.from('profiles').select('id, display_name, handle, avatar_path').in('id', memberIds)
     : Promise.resolve({ data: [], error: null })
 
-  const [responsesResult, passesResult, memberProfilesResult] = await Promise.all([responseRequest, passRequest, memberProfilesRequest])
+  const [responsesResult, passesResult, memberProfilesResult, weeklyResponsesResult, connectionsResult] = await Promise.all([responseRequest, passRequest, memberProfilesRequest, weeklyResponseRequest, connectionRequest])
   if (responsesResult.error) throw responsesResult.error
   if (passesResult.error) throw passesResult.error
   if (memberProfilesResult.error) throw memberProfilesResult.error
+  if (weeklyResponsesResult.error) throw weeklyResponsesResult.error
+  if (connectionsResult.error) throw connectionsResult.error
+  const connectedIds = new Set<string>()
+  for (const connection of connectionsResult.data ?? []) {
+    if (connection.sender_id !== userId) connectedIds.add(connection.sender_id)
+    if (connection.recipient_id && connection.recipient_id !== userId) connectedIds.add(connection.recipient_id)
+  }
 
   const responseRows = responsesResult.data ?? []
   const responseIds = responseRows.map((response) => response.id)
-  const authorIds = [...new Set(responseRows.map((response) => response.author_id))]
+  const weeklyResponseRows = weeklyResponsesResult.data ?? []
+  const authorIds = [...new Set([...responseRows.map((response) => response.author_id), ...weeklyResponseRows.map((response) => response.author_id)])]
   const [responseProfilesResult, reactionsResult] = await Promise.all([
     authorIds.length
       ? database.from('profiles').select('id, display_name, handle, avatar_path').in('id', authorIds)
@@ -177,8 +201,10 @@ export async function fetchCommunityDetail(slug: string, userId?: string | null)
       avatarUrl: publicAvatarUrl(profile?.avatar_path ?? null),
       copy: response.text_content || '',
       mediaUrl: publicMediaUrl(response.media_path),
+      posterUrl: publicMediaUrl(response.media_poster_path),
       format: response.format,
       reactions: reactionCounts.get(response.id) ?? 0,
+      familiar: connectedIds.has(response.author_id),
     }
   }).filter((response) => Boolean(response.ralli))
 
@@ -209,5 +235,17 @@ export async function fetchCommunityDetail(slug: string, userId?: string | null)
     (b.participants * 4 + b.reactions + b.passes * 2 + b.boosts) - (a.participants * 4 + a.reactions + a.passes * 2 + a.boosts),
   )
   const explicitDaily = dailyResult.data?.ralli_id ? ralliById.get(dailyResult.data.ralli_id) : null
-  return { community, daily: explicitDaily ?? happening[0] ?? null, happening: happening.filter((ralli) => ralli.id !== (explicitDaily ?? happening[0])?.id).slice(0, 5), chains, responses, members }
+  const daily = explicitDaily ?? happening[0] ?? null
+  const dailyResponded = daily && userId ? await hasResponded(daily.id, userId) : false
+  const familiarNames = [...new Set(responseRows.filter((response) => connectedIds.has(response.author_id)).map((response) => responseProfiles.get(response.author_id)?.display_name).filter((name): name is string => Boolean(name)))].slice(0, 3)
+  const weeklyCounts = new Map<string, number>()
+  for (const response of weeklyResponseRows) weeklyCounts.set(response.author_id, (weeklyCounts.get(response.author_id) ?? 0) + 1)
+  const weeklyLeaderEntry = [...weeklyCounts.entries()].sort((a, b) => b[1] - a[1])[0]
+  const weeklyLeaderProfile = weeklyLeaderEntry ? responseProfiles.get(weeklyLeaderEntry[0]) : null
+  const weeklyLeader = weeklyLeaderEntry ? { name: weeklyLeaderProfile?.display_name || weeklyLeaderProfile?.handle || 'A community member', count: weeklyLeaderEntry[1] } : null
+  return {
+    community, daily, dailyResponded,
+    happening: happening.filter((ralli) => ralli.id !== daily?.id).slice(0, 5), chains, responses, members,
+    accountability: { familiarNames, weeklyLeader, longestChain: chains[0]?.people ?? 0 },
+  }
 }

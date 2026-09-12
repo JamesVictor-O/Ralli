@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { type KeyboardEvent, type MouseEvent, useEffect } from 'react'
 import { ChevronRight, UsersRound } from 'lucide-react'
 import { useTodaysRalli } from '../../hooks/useTodaysRalli.ts'
 import type { Dare } from './DareCard.tsx'
@@ -11,7 +11,7 @@ interface TodaysRalliProps {
 }
 
 export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: TodaysRalliProps) {
-  const { ralli, responded, presence, status } = useTodaysRalli(refreshKey)
+  const { ralli, responded, isCreator, presence, status } = useTodaysRalli(refreshKey)
 
   useEffect(() => {
     if (status === 'ready' || status === 'empty') onLoaded?.(ralli?.id ?? null)
@@ -20,8 +20,18 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
   if (status === 'loading') return <div className="daily-ralli daily-ralli--loading" aria-busy="true" aria-label="Loading today’s Ralli" />
   if (status !== 'ready' || !ralli) return null
 
+  const canViewResponses = responded || isCreator
+  function openFromCard(event: MouseEvent<HTMLElement>) {
+    if (!(event.target instanceof Element) || !event.target.closest('button, a')) onOpen(ralli!)
+  }
+  function openFromKeyboard(event: KeyboardEvent<HTMLElement>) {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+    event.preventDefault()
+    onOpen(ralli!)
+  }
+
   return (
-    <article className="daily-ralli">
+    <article className="daily-ralli" role="link" tabIndex={0} aria-label={`Open Ralli: ${ralli.prompt}`} onClick={openFromCard} onKeyDown={openFromKeyboard}>
       <span className="daily-ralli__glow" aria-hidden="true" />
       <div className="daily-ralli__content">
         <div>
@@ -29,9 +39,9 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
           <h2>{ralli.prompt}</h2>
         </div>
         <div>
-          {responded ? (
+          {canViewResponses ? (
             <div className="daily-ralli__footer">
-              <span><UsersRound aria-hidden="true" /><strong>You’re in</strong><i aria-hidden="true">·</i>{ralli.participants.toLocaleString()} {ralli.participants === 1 ? 'response' : 'responses'}</span>
+              <span><UsersRound aria-hidden="true" /><strong>{isCreator ? 'You started this' : 'You’re in'}</strong><i aria-hidden="true">·</i>{ralli.participants.toLocaleString()} {ralli.participants === 1 ? 'response' : 'responses'}</span>
               <button className="button button--ink" type="button" onClick={() => onOpen(ralli)}>
                 See responses <ChevronRight aria-hidden="true" />
               </button>
@@ -55,7 +65,7 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
         </div>
       </div>
       <div className="daily-ralli__art" aria-hidden="true">
-        <img src={ralli.image} alt="" width="400" height="310" />
+        <img src={ralli.image} alt="" width="400" height="310" fetchPriority="high" decoding="async" />
       </div>
     </article>
   )

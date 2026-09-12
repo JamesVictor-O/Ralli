@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Check, Flag, LoaderCircle, MoreHorizontal, Repeat2, Share2, Sparkles, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Check, Flag, LoaderCircle, MoreHorizontal, Repeat2, Share2, Sparkles, X } from 'lucide-react'
 import { Reactions } from './Reactions.tsx'
 import { TipChip } from './TipChip.tsx'
 import { PassItOn } from '../chains/PassItOn.tsx'
@@ -9,6 +9,7 @@ import { useBackend } from '../../store/backend.ts'
 import { useDialogFocus } from '../../hooks/useDialogFocus.ts'
 import { actionableError } from '../../lib/errors.ts'
 import { FeedVideo } from '../../components/media/FeedVideo.tsx'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 type Sort = 'Popular' | 'Newest'
 
@@ -20,7 +21,7 @@ function relativeTime(value: string) {
   return `${Math.floor(minutes / 1_440)}d`
 }
 
-export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: string }) {
+export function ResponseViewer({ ralliId, prompt, locked = false, onJoin }: { ralliId: string; prompt: string; locked?: boolean; onJoin?: () => void }) {
   const [sort, setSort] = useState<Sort>('Popular')
   const [passResponse, setPassResponse] = useState<RalliResponse | null>(null)
   const [responses, setResponses] = useState<RalliResponse[]>([])
@@ -30,6 +31,7 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
   const [reportState, setReportState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [reportReason, setReportReason] = useState<'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'>('spam')
   const reportDialogRef = useRef<HTMLElement>(null)
+  const viewedForRalli = useRef<string | null>(null)
   const { user } = useBackend()
   const closeReport = useCallback(() => setReportTarget(null), [])
   useDialogFocus(reportDialogRef, Boolean(reportTarget), closeReport)
@@ -48,6 +50,11 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
   }, [ralliId, user])
 
   useEffect(() => { void Promise.resolve().then(load) }, [load])
+  useEffect(() => {
+    if (!user || locked || status !== 'success' || viewedForRalli.current === ralliId) return
+    viewedForRalli.current = ralliId
+    trackProductEvent('responses_viewed', { userId: user.id, ralliId, source: 'ralli_detail', properties: { response_count: responses.length } })
+  }, [locked, ralliId, responses.length, status, user])
 
   const orderedResponses = useMemo(() => [...responses].sort((left, right) => sort === 'Popular'
     ? right.reactions - left.reactions
@@ -87,11 +94,12 @@ export function ResponseViewer({ ralliId, prompt }: { ralliId: string; prompt: s
       {status === 'loading' && <div className="response-feed-state" aria-busy="true"><LoaderCircle className="spin" aria-hidden="true" /><p>Loading responses…</p></div>}
       {status === 'error' && <div className="response-feed-state" role="alert"><AlertCircle aria-hidden="true" /><p>{error}</p><button className="button button--soft" type="button" onClick={() => void load()}>Try again</button></div>}
       {status === 'empty' && <div className="response-feed-state"><Sparkles aria-hidden="true" /><strong>No responses yet</strong><p>Be the first person to take this Ralli somewhere new.</p></div>}
-      {status === 'success' && <div className="response-list">
+      {status === 'success' && locked && <div className="response-lock"><div className="response-lock__previews" aria-hidden="true">{orderedResponses.slice(0, 3).map((response) => <span key={response.id}>{response.mediaUrl && response.format === 'photo' ? <img src={response.mediaUrl} alt="" loading="lazy" decoding="async" /> : <Sparkles />}</span>)}</div><p className="eyebrow">Participation unlocks participation</p><h3>{responses.length} {responses.length === 1 ? 'person has' : 'people have'} already shown up.</h3><p>Add your take to see theirs, react, and challenge someone next.</p>{onJoin && <button className="button button--ink" type="button" onClick={onJoin}>Add yours to unlock <ArrowRight aria-hidden="true" /></button>}</div>}
+      {status === 'success' && !locked && <div className="response-list">
         {orderedResponses.map((response) => <article className="response-post" key={response.id}>
           <header><Avatar initials={response.initials} avatarUrl={response.authorAvatarUrl} className="avatar--response avatar--lime" /><div><strong>{response.author}</strong><small>{relativeTime(response.createdAt)} ago</small></div>{user?.id === response.authorId ? <button className="response-more" type="button" aria-label="Delete your response" onClick={() => void removeResponse(response)}><X aria-hidden="true" /></button> : <button className="response-more" type="button" aria-label={`Report or block ${response.author}`} onClick={() => { setReportTarget(response); setReportState('idle') }}><MoreHorizontal aria-hidden="true" /></button>}</header>
           {response.copy && response.mediaUrl && <p className="response-post__copy">{response.copy}</p>}
-          {response.mediaUrl && response.format === 'video' && <FeedVideo className="response-post__video" src={response.mediaUrl} />}
+          {response.mediaUrl && response.format === 'video' && <FeedVideo className="response-post__video" src={response.mediaUrl} poster={response.posterUrl} />}
           {response.mediaUrl && response.format === 'photo' && <img className="response-post__image" src={response.mediaUrl} alt={`${response.author}'s response to ${prompt}`} width="720" height="520" loading="lazy" decoding="async" />}
           {!response.mediaUrl && <div className="text-response"><span>“</span><p>{response.copy}</p></div>}
           <footer>

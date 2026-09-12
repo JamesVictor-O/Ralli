@@ -147,10 +147,18 @@ export async function fetchRalliFeed(viewerId?: string | null) {
   if (error) throw error
   let rows = data ?? []
   if (viewerId) {
-    const { data: blocks, error: blockError } = await database.from('user_blocks').select('blocked_id').eq('blocker_id', viewerId)
+    const ralliIds = rows.map((row) => row.id).filter((id): id is string => Boolean(id))
+    const [blocksResult, responsesResult] = await Promise.all([
+      database.from('user_blocks').select('blocked_id').eq('blocker_id', viewerId),
+      ralliIds.length ? database.from('responses').select('ralli_id').eq('author_id', viewerId).in('ralli_id', ralliIds) : Promise.resolve({ data: [], error: null }),
+    ])
+    const { data: blocks, error: blockError } = blocksResult
     if (blockError) throw blockError
+    if (responsesResult.error) throw responsesResult.error
     const blocked = new Set((blocks ?? []).map((item) => item.blocked_id))
     rows = rows.filter((row) => !row.creator_id || !blocked.has(row.creator_id))
+    const responded = new Set((responsesResult.data ?? []).map((item) => item.ralli_id))
+    return rows.map((row, index) => ({ ...mapFeedRow(row, index), viewerResponded: responded.has(row.id ?? '') }))
   }
   return rows.map(mapFeedRow)
 }

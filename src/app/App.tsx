@@ -1,11 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, ChevronRight, HandCoins, Home, Plus, Search, UsersRound,
-  Sparkles, UserRound, WalletCards, Zap,
+  Bell, ChevronRight, HandCoins, Home, LoaderCircle, Plus, Search, UsersRound,
+  Sparkles, UserRound, WalletCards, WifiOff, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
 import { TodaysRalli } from '../features/discover/TodaysRalli.tsx'
+import { PendingChallenge } from '../features/discover/PendingChallenge.tsx'
 import type { Dare } from '../features/discover/DareCard.tsx'
 import { Avatar } from '../components/ui/Avatar.tsx'
 import { useWallet } from '../store/wallet.ts'
@@ -13,8 +14,11 @@ import { useBackend } from '../store/backend.ts'
 import { useMyProfileSummary } from '../hooks/useMyProfileSummary.ts'
 import { useUnreadActivityCount } from '../hooks/useUnreadActivityCount.ts'
 import { SplashScreen } from '../components/ui/SplashScreen.tsx'
+import { ConnectionNotice } from '../components/ui/ConnectionNotice.tsx'
 import { fetchRalliById } from '../lib/rallis.ts'
 import { openInvitation, type InvitationPreview } from '../lib/invitations.ts'
+import { trackProductEvent } from '../lib/analytics.ts'
+import { actionableError } from '../lib/errors.ts'
 import '../styles/index.css'
 
 const Activity = lazy(() => import('../features/activity/Activity.tsx').then((module) => ({ default: module.Activity })))
@@ -40,12 +44,13 @@ const navItems = [
 ]
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true)
+  const [showSplash, setShowSplash] = useState(() => window.sessionStorage.getItem('ralli-splash-seen') !== 'true')
   const reduceMotion = useReducedMotion()
   const [activeNav, setActiveNav] = useState(() => new URLSearchParams(window.location.search).has('community') ? 'Communities' : 'Discover')
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
   const [selectedRalli, setSelectedRalli] = useState<Dare | null>(null)
   const [feedRefreshKey, setFeedRefreshKey] = useState(0)
+  const [freshResponse, setFreshResponse] = useState<{ ralliId: string; responseId: string } | null>(null)
   const [todaysRalliId, setTodaysRalliId] = useState<string | null>(null)
   const [walletOpen, setWalletOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -55,12 +60,22 @@ export default function App() {
   const [communitySlug, setCommunitySlug] = useState<string | null>(() => new URLSearchParams(window.location.search).get('community'))
   const [createCommunity, setCreateCommunity] = useState<{ id: string; name: string; icon: string } | null>(null)
   const { status: walletStatus, account } = useWallet()
-  const { user } = useBackend()
+  const { user, status: backendStatus, error: backendError, retry: retryBackend } = useBackend()
   const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
   const { count: unreadActivity, refresh: refreshUnreadActivity } = useUnreadActivityCount(user)
-  const showOnboarding = walletStatus === 'connected' && Boolean(myProfile) && !myProfile?.onboarded
-  const finishSplash = useCallback(() => setShowSplash(false), [])
+  const appOpenTracked = useRef(false)
+  const showOnboarding = Boolean(user && myProfile && !myProfile.onboarded)
+  const finishSplash = useCallback(() => {
+    window.sessionStorage.setItem('ralli-splash-seen', 'true')
+    setShowSplash(false)
+  }, [])
   const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
+
+  useEffect(() => {
+    if (!user || appOpenTracked.current) return
+    appOpenTracked.current = true
+    trackProductEvent('app_opened', { userId: user.id, source: 'app' })
+  }, [user])
 
   useEffect(() => {
     const openSearch = (event: KeyboardEvent) => {
@@ -78,7 +93,11 @@ export default function App() {
     const token = new URLSearchParams(window.location.search).get('invite')
     if (!token) return
     void openInvitation(token).then((preview) => {
-      if (preview) { setInviteToken(token); setInvitation(preview) }
+      if (preview) {
+        trackProductEvent('invitation_opened', { userId: user.id, ralliId: preview.ralli_id, source: 'deep_link' })
+        setInviteToken(token)
+        setInvitation(preview)
+      }
     }).catch(() => undefined)
   }, [user])
 
@@ -98,9 +117,13 @@ export default function App() {
     }).catch(() => undefined)
   }, [])
 
-  function openRalli(ralli: Dare, flow: 'detail' | 'join' = 'detail') {
+  function openRalli(ralli: Dare, flow: 'detail' | 'join' = 'detail', source = 'discover') {
     setSelectedRalli(ralli)
     setActiveFlow(flow)
+    if (user) {
+      trackProductEvent('ralli_opened', { userId: user.id, ralliId: ralli.id, source })
+      if (flow === 'join') trackProductEvent('response_started', { userId: user.id, ralliId: ralli.id, source })
+    }
     const url = new URL(window.location.href)
     url.searchParams.set('ralli', ralli.id)
     window.history.replaceState({}, '', url)
@@ -134,6 +157,7 @@ export default function App() {
   return (
     <>
     <a className="skip-link" href="#main-content">Skip to main content</a>
+    <ConnectionNotice />
     <AnimatePresence mode="wait">
       {showSplash ? (
         <SplashScreen key="splash" onComplete={finishSplash} />
@@ -144,7 +168,11 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0, 0, 0.2, 1] }}
         >
-    <div className={`app-shell ${activeNav !== 'Discover' ? 'app-shell--focus' : ''}`}>
+    {backendStatus === 'initializing' ? (
+      <main className="startup-state" role="status" aria-live="polite"><LoaderCircle className="spin" aria-hidden="true" /><h1>Getting today’s Rallis ready…</h1><p>Your feed will appear in a moment.</p></main>
+    ) : backendStatus === 'error' ? (
+      <main className="startup-state" role="alert"><span className="startup-state__icon"><WifiOff aria-hidden="true" /></span><h1>Ralli couldn’t start</h1><p>{actionableError(backendError, 'Ralli could not start its data session. Check your connection and try again.')}</p><button className="button button--ink" type="button" onClick={() => void retryBackend()}>Try again</button></main>
+    ) : <div className={`app-shell ${activeNav !== 'Discover' ? 'app-shell--focus' : ''}`}>
       <aside className="side-nav" aria-label="Primary navigation">
         <a className="brand" href="/" aria-label="Ralli home">
           <img className="brand-mark" src="/railIcon.png" width="1254" height="1254" alt="" /><span>ralli</span>
@@ -194,7 +222,8 @@ export default function App() {
           <button className="desktop-search" type="button" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /><span>Search Rallis</span><kbd>⌘ K</kbd></button>
         </section>
 
-        <TodaysRalli onJoin={(ralli) => openRalli(ralli, 'join')} onOpen={(ralli) => openRalli(ralli)} refreshKey={feedRefreshKey} onLoaded={setTodaysRalliId} />
+        <PendingChallenge refreshKey={feedRefreshKey} onJoin={(ralli) => openRalli(ralli, 'join', 'pending_invitation')} />
+        <TodaysRalli onJoin={(ralli) => openRalli(ralli, 'join', 'daily_ralli')} onOpen={(ralli) => openRalli(ralli, 'detail', 'daily_ralli')} refreshKey={feedRefreshKey} onLoaded={setTodaysRalliId} />
 
         <section className="economy-loop" aria-labelledby="economy-heading">
           <header><div><p className="eyebrow">Powered by Nimiq</p><h2 id="economy-heading">Participation has real momentum.</h2></div><span className="nim-mark">NIM</span></header>
@@ -210,11 +239,11 @@ export default function App() {
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
         </div>
-        <DareFeed onOpen={(ralli) => openRalli(ralli)} onJoin={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={() => { setCreateCommunity(null); setActiveFlow('create') }} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
+        <DareFeed onOpen={(ralli) => openRalli(ralli, 'detail', 'feed')} onJoin={(ralli) => openRalli(ralli, 'join', 'feed')} onBoost={setBoostTarget} onCreate={() => { setCreateCommunity(null); setActiveFlow('create') }} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
         </>)}
-        {activeNav === 'Communities' && <CommunityHub initialSlug={communitySlug} onSlugChange={openCommunity} onOpenRalli={(ralli) => openRalli(ralli)} onJoinRalli={(ralli) => openRalli(ralli, 'join')} onBoost={setBoostTarget} onCreate={startCommunityRalli} />}
-        {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli)} onRead={() => void refreshUnreadActivity()} />}
-        {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli)} />}
+        {activeNav === 'Communities' && <CommunityHub initialSlug={communitySlug} onSlugChange={openCommunity} onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'community')} onJoinRalli={(ralli) => openRalli(ralli, 'join', 'community')} onBoost={setBoostTarget} onCreate={startCommunityRalli} />}
+        {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'activity')} onJoinRalli={(ralli) => openRalli(ralli, 'join', 'activity')} onRead={() => void refreshUnreadActivity()} />}
+        {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'chains')} />}
         {activeNav === 'Me' && <Profile />}
       </main>
 
@@ -240,10 +269,13 @@ export default function App() {
 
       <Suspense fallback={<div className="route-loader" role="status">Loading…</div>}>
       {activeFlow === 'detail' && selectedRalli && (
-        <RalliDetail ralli={selectedRalli} onClose={closeRalliFlow} onJoin={() => setActiveFlow('join')} />
+        <RalliDetail ralli={selectedRalli} unlockedResponseId={freshResponse?.ralliId === selectedRalli.id ? freshResponse.responseId : null} onClose={closeRalliFlow} onJoin={() => {
+          if (user) trackProductEvent('response_started', { userId: user.id, ralliId: selectedRalli.id, source: 'ralli_detail' })
+          setActiveFlow('join')
+        }} />
       )}
       {activeFlow === 'join' && selectedRalli && (
-        <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
+        <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onSeeResponses={(responseId) => { setFreshResponse({ ralliId: selectedRalli.id, responseId }); setActiveFlow('detail') }} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
       )}
       {activeFlow === 'create' && (
         <CreateRalli community={createCommunity} onClose={() => { setActiveFlow(null); setCreateCommunity(null) }} onCreated={(id) => {
@@ -251,7 +283,10 @@ export default function App() {
           void fetchRalliById(id).then(setSelectedRalli)
         }} />
       )}
-      {showOnboarding && user && <Onboarding userId={user.id} onDone={() => void refreshMyProfile()} />}
+      {showOnboarding && user && <Onboarding userId={user.id} onDone={(slug) => {
+        void refreshMyProfile()
+        if (slug) { setActiveNav('Communities'); openCommunity(slug) }
+      }} />}
       {walletOpen && <WalletPanel onClose={() => setWalletOpen(false)} />}
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={selectSearchResult} />}
       {boostTarget && <Boost ralliId={boostTarget.id} creator={boostTarget.author} ralli={boostTarget.prompt} pool={boostTarget.reward} onClose={() => setBoostTarget(null)} />}
@@ -280,7 +315,7 @@ export default function App() {
           )
         })}
       </nav>
-    </div>
+    </div>}
         </motion.div>
       )}
     </AnimatePresence>

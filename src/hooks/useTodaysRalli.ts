@@ -39,5 +39,6 @@ export function useTodaysRalli(refreshKey = 0) {
 
   useEffect(() => { void Promise.resolve().then(load) }, [load])
 
-  return { ralli, responded, presence, status, retry: load }
+  const isCreator = Boolean(user && ralli?.creatorId === user.id)
+  return { ralli, responded, isCreator, presence, status, retry: load }
 }

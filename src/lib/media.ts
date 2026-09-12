@@ -13,6 +13,8 @@ const RESPONSE_MAX_DIMENSION = 1440
 const RESPONSE_WEBP_QUALITY = 0.8
 const AVATAR_DIMENSION = 512
 const AVATAR_WEBP_QUALITY = 0.85
+const VIDEO_POSTER_MAX_WIDTH = 720
+const VIDEO_POSTER_WEBP_QUALITY = 0.72
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 const avatarTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
@@ -97,6 +99,44 @@ export async function optimizeResponseImage(file: File) {
     return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() })
   } finally {
     bitmap.close()
+  }
+}
+
+// A tiny still is enough to make video posts appear instantly in the feed while the
+// actual media is fetched only when it approaches the viewport. This also avoids the
+// blank/black first frame common with iPhone MOV files.
+export async function createVideoPoster(file: File) {
+  if (!isVideoFile(file)) return null
+  const url = URL.createObjectURL(file)
+  const video = document.createElement('video')
+  video.muted = true
+  video.playsInline = true
+  video.preload = 'metadata'
+  video.src = url
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error('Video preview timed out.')), 8_000)
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0
+        video.currentTime = Math.min(Math.max(duration * 0.05, 0.05), 1)
+      }
+      video.onseeked = () => { window.clearTimeout(timeout); resolve() }
+      video.onerror = () => { window.clearTimeout(timeout); reject(new Error('This video could not be previewed.')) }
+    })
+    const scale = Math.min(1, VIDEO_POSTER_MAX_WIDTH / video.videoWidth)
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale))
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale))
+    const context = canvas.getContext('2d')
+    if (!context) return null
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', VIDEO_POSTER_WEBP_QUALITY))
+    return blob ? new File([blob], 'video-poster.webp', { type: 'image/webp', lastModified: Date.now() }) : null
+  } finally {
+    video.removeAttribute('src')
+    video.load()
+    URL.revokeObjectURL(url)
   }
 }
 

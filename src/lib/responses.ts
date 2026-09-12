@@ -13,6 +13,7 @@ export interface RalliResponse {
   createdAt: string
   copy: string
   mediaUrl: string | null
+  posterUrl: string | null
   format: 'text' | 'photo' | 'video'
   reactions: number
   selectedReaction: string | null
@@ -67,6 +68,7 @@ export async function fetchResponses(ralliId: string, viewerId: string | null): 
       createdAt: row.created_at,
       copy: row.text_content || '',
       mediaUrl: publicMediaUrl(row.media_path),
+      posterUrl: publicMediaUrl(row.media_poster_path),
       format: row.format,
       reactions: reactions.length,
       selectedReaction: reactions.find((reaction) => reaction.user_id === viewerId)?.kind ?? null,

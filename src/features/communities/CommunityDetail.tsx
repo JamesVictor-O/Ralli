@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight, Coins, Heart, LoaderCircle, Plus, RefreshCw, Sparkles, UsersRound, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Coins, Flame, Heart, LoaderCircle, Plus, RefreshCw, Sparkles, UsersRound, Zap } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar.tsx'
 import type { Dare } from '../discover/DareCard.tsx'
 import { fetchCommunityDetail, setCommunityMembership, type CommunityDetailData } from '../../lib/communities.ts'
 import { useBackend } from '../../store/backend.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
@@ -39,6 +40,7 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
     setData({ ...data, community: { ...data.community, joined: joining, members: Math.max(0, data.community.members + (joining ? 1 : -1)) } })
     try {
       await setCommunityMembership(data.community.id, user.id, joining)
+      if (joining) trackProductEvent('community_joined', { userId: user.id, communityId: data.community.id, source: 'community_detail' })
     } catch (failure) {
       setData(data)
       setError(actionableError(failure, 'Your community membership could not be updated.'))
@@ -56,7 +58,7 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
   )
   if (!data) return <div className="community-loading" role="status"><LoaderCircle className="spin" aria-hidden="true" /> Loading community…</div>
 
-  const { community, daily, happening, chains, responses, members } = data
+  const { community, daily, dailyResponded, happening, chains, responses, members, accountability } = data
   return (
     <section className="community-page">
       <button className="community-back" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> All communities</button>
@@ -72,14 +74,20 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
       </header>
       {error && <p className="payment-error" role="alert">{error}</p>}
 
+      <section className="community-accountability" aria-label="Community momentum">
+        <article className={dailyResponded ? 'is-complete' : ''}><span><UsersRound aria-hidden="true" /></span><div><p className="eyebrow">Today</p><h2>{daily?.participants ?? 0} showed up</h2><p>{dailyResponded ? 'You’re one of them. Keep the energy moving.' : 'Your community is waiting for your response.'}</p></div></article>
+        <article><span><Flame aria-hidden="true" /></span><div><p className="eyebrow">This week</p><h2>{accountability.weeklyLeader ? `${accountability.weeklyLeader.name} leads with ${accountability.weeklyLeader.count}` : 'The first move is open'}</h2><p>{accountability.weeklyLeader ? 'completed Rallis in this community.' : 'Show up today and set the pace.'}</p></div></article>
+        <article><span><Zap aria-hidden="true" /></span><div><p className="eyebrow">People you know</p><h2>{accountability.familiarNames.length ? `${accountability.familiarNames.join(', ')} showed up` : `${accountability.longestChain || 1} in the longest chain`}</h2><p>{accountability.familiarNames.length ? 'Their responses are waiting for your take.' : 'Join a Ralli and keep the chain alive.'}</p></div></article>
+      </section>
+
       <section className="community-section" aria-labelledby="community-today">
         <div className="community-section__heading"><div><p className="eyebrow">Today in {community.name}</p><h2 id="community-today">One prompt. Everyone’s take.</h2></div></div>
         {daily ? (
           <article className="community-daily">
             <div className="community-daily__copy"><span className="community-daily__label"><Sparkles aria-hidden="true" /> Community Daily Ralli</span>
               <h3>{daily.prompt}</h3>
-              <p className="community-daily__participation"><UsersRound aria-hidden="true" /> {compact.format(daily.participants)} {daily.participants === 1 ? 'person has' : 'people have'} joined today</p>
-              <div><button className="button button--ink" type="button" onClick={() => onJoinRalli(daily)}>Join today’s Ralli <ArrowRight aria-hidden="true" /></button>
+              <p className="community-daily__participation"><UsersRound aria-hidden="true" /> {dailyResponded ? `You showed up with ${compact.format(daily.participants)} ${daily.participants === 1 ? 'person' : 'people'} today` : `${compact.format(daily.participants)} ${daily.participants === 1 ? 'person has' : 'people have'} shown up. You’re next.`}</p>
+              <div>{!dailyResponded && <button className="button button--ink" type="button" onClick={() => onJoinRalli(daily)}>Show up today <ArrowRight aria-hidden="true" /></button>}
                 <button className="text-button" type="button" onClick={() => onOpenRalli(daily)}>See responses <ArrowRight aria-hidden="true" /></button></div>
             </div>
             <button className="community-daily__media" type="button" onClick={() => onOpenRalli(daily)} aria-label={`Open ${daily.prompt}`}>
@@ -104,23 +112,23 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
       </section>
 
       <section className="community-section" aria-labelledby="community-chains">
-        <div className="community-section__heading"><div><p className="eyebrow">Passing from person to person</p><h2 id="community-chains">Active chains</h2></div></div>
+        <div className="community-section__heading"><div><p className="eyebrow">Keep it moving</p><h2 id="community-chains">Chains waiting for someone next</h2></div></div>
         {chains.length ? <div className="community-chain-list">{chains.map((chain) => (
           <button className="community-chain" type="button" key={chain.ralli.id} onClick={() => onOpenRalli(chain.ralli)}>
-            <span className="community-chain__zap"><Zap aria-hidden="true" /></span><span><strong>{chain.ralli.prompt}</strong><small>{chain.people} people in this chain</small>
+            <span className="community-chain__zap"><Zap aria-hidden="true" /></span><span><strong>{chain.ralli.prompt}</strong><small>{chain.people} people · Keep this chain alive</small>
               <span className="community-chain__places">{chain.locations.length ? chain.locations.slice(0, 5).join(' → ') : 'The next stop could be you'}</span></span><ArrowRight aria-hidden="true" />
           </button>
         ))}</div> : <div className="community-empty community-empty--small"><p>No Ralli has been passed on here yet. Join one, respond, then challenge someone next.</p></div>}
       </section>
 
       <section className="community-section" aria-labelledby="community-responses">
-        <div className="community-section__heading"><div><p className="eyebrow">Content causes more content</p><h2 id="community-responses">Recent responses</h2></div></div>
+        <div className="community-section__heading"><div><p className="eyebrow">People showing up</p><h2 id="community-responses">Recent responses</h2></div></div>
         {responses.length ? <div className="community-response-grid">{responses.map((response) => (
           <button className={`community-response community-response--${response.format}`} type="button" key={response.id} onClick={() => onOpenRalli(response.ralli)}>
-            {response.mediaUrl && response.format === 'video' && <video src={response.mediaUrl} muted playsInline preload="metadata" />}
+            {response.mediaUrl && response.format === 'video' && <video src={response.mediaUrl} poster={response.posterUrl ?? undefined} muted playsInline preload="none" />}
             {response.mediaUrl && response.format !== 'video' && <img src={response.mediaUrl} alt="" loading="lazy" decoding="async" />}
             {!response.mediaUrl && <span className="community-response__text">{response.copy || response.ralli.prompt}</span>}
-            <span className="community-response__meta"><Avatar initials={response.initials} avatarUrl={response.avatarUrl} /><span><strong>{response.author}</strong><small>{response.ralli.prompt}</small></span><span><Heart aria-hidden="true" /> {response.reactions}</span></span>
+            <span className="community-response__meta"><Avatar initials={response.initials} avatarUrl={response.avatarUrl} /><span><strong>{response.author}{response.familiar && <i>Familiar</i>}</strong><small>{response.ralli.prompt}</small></span><span><Heart aria-hidden="true" /> {response.reactions}</span></span>
           </button>
         ))}</div> : <div className="community-empty community-empty--small"><p>The first response will set this place in motion.</p></div>}
       </section>

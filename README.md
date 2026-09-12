@@ -364,6 +364,25 @@ npm run lint     # Run ESLint
 npm run preview  # Preview the production build
 ```
 
+### Retention analytics
+
+Ralli records a small, first-party Supabase event funnel for product decisions. Events include the action, session, source, and related Ralli, response, or community IDs. They never include captions, media, wallet addresses, or invitation tokens.
+
+Apply the latest migration before testing analytics:
+
+```bash
+npx supabase db push
+```
+
+In the Supabase SQL Editor, inspect the private aggregate views:
+
+```sql
+select * from public.product_funnel_30d;
+select * from public.product_funnel_daily order by event_date desc, event_name;
+```
+
+These views are restricted from browser clients and remain available to the project owner and service role.
+
 ## Deploying to Vercel
 
 Ralli includes a Vercel configuration for its Vite production build.

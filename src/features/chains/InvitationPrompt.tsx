@@ -3,6 +3,7 @@ import { ArrowRight, LoaderCircle, X, Zap } from 'lucide-react'
 import { acceptInvitation, type InvitationPreview } from '../../lib/invitations.ts'
 import { useBackend } from '../../store/backend.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 export function InvitationPrompt({ invitation, token, onAccept, onClose }: { invitation: InvitationPreview; token: string; onAccept: () => void; onClose: () => void }) {
   const { status, user, retry } = useBackend()
@@ -11,7 +12,11 @@ export function InvitationPrompt({ invitation, token, onAccept, onClose }: { inv
   async function accept() {
     if (!user) { if (status === 'error') await retry(); return }
     setSaving(true); setError('')
-    try { await acceptInvitation(token); onAccept() }
+    try {
+      await acceptInvitation(token)
+      trackProductEvent('invitation_accepted', { userId: user.id, ralliId: invitation.ralli_id, source: 'invitation_prompt' })
+      onAccept()
+    }
     catch (failure) { setError(actionableError(failure, 'This invitation could not be accepted. Try again.')) }
     finally { setSaving(false) }
   }

@@ -38,6 +38,7 @@ type ResponseRow = {
   format: Database['public']['Enums']['response_format']
   text_content: string | null
   media_path: string | null
+  media_poster_path: string | null
   status: Database['public']['Enums']['response_status']
   city: string | null
   country: string | null
@@ -57,6 +58,7 @@ type RalliInvitationRow = { id: string; token: string; ralli_id: string; respons
 type CommunityRow = { id: string; slug: string; name: string; icon: string; description: string; created_by: string | null; created_at: string; updated_at: string }
 type CommunityMemberRow = { community_id: string; user_id: string; role: Database['public']['Enums']['community_role']; joined_at: string }
 type CommunityDailyRalliRow = { community_id: string; ralli_id: string; active_date: string; created_at: string }
+type ProductEventRow = { id: number; user_id: string; session_id: string; event_name: string; source: string | null; ralli_id: string | null; response_id: string | null; community_id: string | null; properties: Json; created_at: string }
 
 export type CommunityDirectoryRow = {
   id: string | null
@@ -179,6 +181,12 @@ export interface Database {
         Row: CommunityDailyRalliRow
         Insert: Pick<CommunityDailyRalliRow, 'community_id' | 'ralli_id'> & Partial<Pick<CommunityDailyRalliRow, 'active_date'>>
         Update: Pick<CommunityDailyRalliRow, 'ralli_id'>
+        Relationships: []
+      }
+      product_events: {
+        Row: ProductEventRow
+        Insert: Omit<ProductEventRow, 'id' | 'created_at'>
+        Update: never
         Relationships: []
       }
     }

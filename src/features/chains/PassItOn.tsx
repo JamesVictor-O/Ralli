@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Copy, LoaderCircle, Send, Share2, X } from 'lucide-react'
 import { recordPass } from '../../lib/responses.ts'
@@ -7,6 +7,7 @@ import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
+import { trackProductEvent } from '../../lib/analytics.ts'
 
 interface PassItOnProps {
   ralliId: string
@@ -23,6 +24,7 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   const [error, setError] = useState('')
   const [shareCompleted, setShareCompleted] = useState(false)
   const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const analyticsTracked = useRef(false)
   const { user } = useBackend()
   const { account } = useWallet()
   const baseUrl = `${window.location.origin}${window.location.pathname}?ralli=${ralliId}`
@@ -42,7 +44,11 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     try {
       await ensureWalletAttached(user.id, account)
       const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
-      if (!inviteToken) setInviteToken(token)
+      if (!inviteToken) {
+        setInviteToken(token)
+        trackProductEvent('invitation_shared', { userId: user.id, ralliId, responseId: responseId ?? undefined, source: 'copy_link' })
+        analyticsTracked.current = true
+      }
       await navigator.clipboard.writeText(`${baseUrl}&invite=${token}`)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
@@ -57,11 +63,16 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     try {
       await ensureWalletAttached(user.id, account)
       const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
-      if (!inviteToken) setInviteToken(token)
+      const createdInvitation = !inviteToken
+      if (createdInvitation) setInviteToken(token)
       const invitationUrl = `${baseUrl}&invite=${token}`
       if (!shareCompleted) {
         if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} challenged you: “${prompt}”`, url: invitationUrl })
         else { await navigator.clipboard.writeText(invitationUrl); setCopied(true) }
+        if (!analyticsTracked.current) {
+          trackProductEvent('invitation_shared', { userId: user.id, ralliId, responseId: responseId ?? undefined, source: nativeShare ? 'native_share' : 'copy_link' })
+          analyticsTracked.current = true
+        }
         setShareCompleted(true)
         didShare = true
       }

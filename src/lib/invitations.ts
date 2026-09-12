@@ -1,4 +1,5 @@
 import { requireSupabase } from './supabase.ts'
+import { fetchRalliById } from './rallis.ts'
 
 export interface InvitationPreview { ralli_id: string; prompt: string; sender_name: string; status: 'shared' | 'opened' | 'accepted' | 'responded' }
 
@@ -21,4 +22,23 @@ export async function fetchInvitationConversion(userId: string) {
   const opened = (data ?? []).filter((item) => item.status !== 'shared').length
   const responded = (data ?? []).filter((item) => item.status === 'responded').length
   return { total, opened, responded, rate: total ? Math.round((responded / total) * 100) : 0 }
+}
+
+export async function fetchPendingChallenge(userId: string) {
+  const database = requireSupabase()
+  const { data: invitation, error } = await database.from('ralli_invitations')
+    .select('*')
+    .eq('recipient_id', userId)
+    .eq('status', 'accepted')
+    .order('accepted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  if (!invitation) return null
+
+  const [{ data: sender }, ralli] = await Promise.all([
+    database.from('profiles').select('display_name').eq('id', invitation.sender_id).maybeSingle(),
+    fetchRalliById(invitation.ralli_id),
+  ])
+  return { invitationId: invitation.id, senderName: sender?.display_name || 'Someone', ralli }
 }
