@@ -3,7 +3,7 @@ import { requireUser } from '../_shared/auth.ts'
 import { normalizeNimiqAddress } from '../_shared/nimiq.ts'
 
 type PaymentBody = {
-  kind?: 'creator_reward' | 'boost' | 'tip'
+  kind?: 'creator_reward' | 'boost' | 'ralli_tip' | 'tip'
   ralliId?: string
   responseId?: string
   amountLuna?: number
@@ -40,7 +40,8 @@ Deno.serve(async (request) => {
     } else {
       if (!body.ralliId) return json({ error: 'Choose a Ralli to fund.' }, 400, headers)
       const { data: ralli } = await admin.from('rallis').select('id, creator_id').eq('id', body.ralliId).single()
-      if (!ralli || (body.kind === 'creator_reward' && ralli.creator_id !== user.id)) return json({ error: 'This funding action is not allowed.' }, 403, headers)
+      if (!ralli || (body.kind === 'creator_reward' && ralli.creator_id !== user.id)
+        || (body.kind === 'ralli_tip' && ralli.creator_id === user.id)) return json({ error: 'This funding action is not allowed.' }, 403, headers)
       const { data: creator } = await admin.from('profiles').select('nimiq_address, nimiq_address_verified_at').eq('id', ralli.creator_id).single()
       if (!creator?.nimiq_address_verified_at || !creator.nimiq_address) return json({ error: 'This creator has no verified boost address.' }, 409, headers)
       normalizeNimiqAddress(creator.nimiq_address)

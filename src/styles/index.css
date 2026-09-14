@@ -1790,9 +1790,10 @@ img.avatar { object-fit: cover; }
   .response-post > footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
   .reward-callout { grid-template-columns: 1fr; }
   .response-reactions, .reaction-trigger, .tip-chip { width: 100%; }
-  .ralli-primary-actions { display: grid; grid-template-columns: 1fr 1fr auto; }
+  .ralli-primary-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ralli-primary-actions .response-reactions, .ralli-primary-actions .reaction-trigger { width: auto; }
   .ralli-primary-actions > .response-action { min-width: 0; }
+  .ralli-primary-actions > .response-action:last-child { margin-left: 0; }
   .reaction-trigger, .response-action, .response-post > footer > button { min-width: 0; width: 100%; }
   .tip-chip { grid-column: 1 / -1; }
   .tip-chip__send { flex: 1; }

@@ -19,6 +19,11 @@ export async function fetchMyProfile(userId: string) {
   if (responsesResult.error) throw responsesResult.error
   if (passesResult.error) throw passesResult.error
   if (tipsResult.error) throw tipsResult.error
+  const ralliIds = (rallisResult.data ?? []).map((ralli) => ralli.id)
+  const ralliTipsResult = ralliIds.length
+    ? await database.from('pool_contributions').select('amount_luna').in('ralli_id', ralliIds).eq('kind', 'ralli_tip').eq('status', 'confirmed')
+    : { data: [], error: null }
+  if (ralliTipsResult.error) throw ralliTipsResult.error
   const responseIds = (responsesResult.data ?? []).map((response) => response.id)
   const reactionsResult = responseIds.length
     ? await database.from('reactions').select('id').in('response_id', responseIds)
@@ -31,7 +36,7 @@ export async function fetchMyProfile(userId: string) {
     responses: (responsesResult.data ?? []).map((response) => ({ ...response, mediaUrl: publicMediaUrl(response.media_path) })),
     reactionCount: reactionsResult.data?.length ?? 0,
     passCount: passesResult.data?.length ?? 0,
-    nimEarned: (tipsResult.data ?? []).reduce((sum, tip) => sum + Number(tip.amount_luna), 0) / LUNA_PER_NIM,
+    nimEarned: ([...(tipsResult.data ?? []), ...(ralliTipsResult.data ?? [])]).reduce((sum, tip) => sum + Number(tip.amount_luna), 0) / LUNA_PER_NIM,
   }
 }
 

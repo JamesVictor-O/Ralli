@@ -15,6 +15,7 @@ const presentation = {
   pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, action: 'See chain', kind: 'Social' },
   response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, action: 'Watch response', kind: 'Social' },
   tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, action: 'View response', kind: 'NIM' },
+  ralli_tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} tipped your Ralli`, action: 'View Ralli', kind: 'NIM' },
   boost: { icon: Sparkles, tone: 'violet', title: (actor: string) => `${actor} sent you a Ralli boost`, action: 'View Ralli', kind: 'NIM' },
   invitation: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} challenged you to a Ralli`, action: 'Respond', kind: 'Social' },
   invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, action: 'Watch response', kind: 'Social' },

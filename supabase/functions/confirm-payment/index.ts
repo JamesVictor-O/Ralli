@@ -13,7 +13,7 @@ import { normalizeNimiqAddress } from '../_shared/nimiq.ts'
 // a real on-chain state — before trusting it. Good enough for a testnet social app; a self-hosted
 // node would be the next step up if this ever needed to be adversarial-proof.
 type ConfirmBody = {
-  kind?: 'creator_reward' | 'boost' | 'tip'
+  kind?: 'creator_reward' | 'boost' | 'ralli_tip' | 'tip'
   transactionHash?: string
   sender?: string
   recipient?: string
@@ -71,7 +71,7 @@ Deno.serve(async (request) => {
       const { data: ralli } = await admin.from('rallis').select('creator_id').eq('id', contribution.ralli_id).single()
       const { data: creator } = await admin.from('profiles').select('nimiq_address, nimiq_address_verified_at').eq('id', ralli?.creator_id ?? '').single()
       if (!creator?.nimiq_address_verified_at || normalizeNimiqAddress(creator.nimiq_address ?? '') !== reportedRecipient) {
-        return json({ error: 'This boost was not sent to the Ralli creator.' }, 409, headers)
+        return json({ error: `This ${contribution.kind === 'ralli_tip' ? 'tip' : 'boost'} was not sent to the Ralli creator.` }, 409, headers)
       }
       if (body.valueLuna! < contribution.amount_luna) return json({ error: 'The confirmed amount is less than what was recorded.' }, 409, headers)
 

@@ -233,7 +233,7 @@ export interface Database {
       ralli_status: 'draft' | 'active' | 'judging' | 'settled' | 'cancelled'
       response_format: 'text' | 'photo' | 'video'
       response_status: 'published' | 'hidden' | 'winner'
-      contribution_kind: 'creator_reward' | 'boost'
+      contribution_kind: 'creator_reward' | 'boost' | 'ralli_tip'
       transaction_status: 'pending' | 'confirmed' | 'failed' | 'refunded'
       settlement_status: 'pending' | 'paying' | 'paid' | 'failed' | 'refunded'
       report_reason: 'spam' | 'harassment' | 'unsafe' | 'copyright' | 'other'

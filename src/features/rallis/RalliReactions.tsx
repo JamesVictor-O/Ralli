@@ -13,7 +13,7 @@ const options = [
   { emoji: '👏', label: 'Respect', kind: 'respect' },
 ]
 
-export function RalliReactions({ ralliId }: { ralliId: string }) {
+export function RalliReactions({ ralliId, onCountChange }: { ralliId: string; onCountChange?: (count: number) => void }) {
   const { user } = useBackend()
   const { account } = useWallet()
   const [selected, setSelected] = useState<string | null>(null)
@@ -27,8 +27,9 @@ export function RalliReactions({ ralliId }: { ralliId: string }) {
     void fetchRalliReactions(ralliId, user?.id ?? null).then((result) => {
       setCount(result.count)
       setSelected(result.selected)
+      onCountChange?.(result.count)
     }).catch(() => undefined)
-  }, [ralliId, user?.id])
+  }, [ralliId, user?.id, onCountChange])
 
   useEffect(() => {
     const close = (event: PointerEvent) => { if (root.current && !root.current.contains(event.target as Node)) setOpen(false) }
@@ -42,7 +43,9 @@ export function RalliReactions({ ralliId }: { ralliId: string }) {
     const previousCount = count
     const next = previous === kind ? null : kind
     setSelected(next)
-    setCount((value) => value + (!previous && next ? 1 : previous && !next ? -1 : 0))
+    const nextCount = previousCount + (!previous && next ? 1 : previous && !next ? -1 : 0)
+    setCount(nextCount)
+    onCountChange?.(nextCount)
     setSaving(true)
     setError('')
     try {
@@ -52,6 +55,7 @@ export function RalliReactions({ ralliId }: { ralliId: string }) {
     } catch (failure) {
       setSelected(previous)
       setCount(previousCount)
+      onCountChange?.(previousCount)
       setError(actionableError(failure, 'Your reaction could not be saved. Try again.'))
     } finally { setSaving(false) }
   }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, Clock3, Heart, Repeat2, Share2, UsersRound, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, Check, Clock3, Coins, Heart, Repeat2, UsersRound, X } from 'lucide-react'
 import { Boost } from '../rewards/Boost.tsx'
 import { RewardPool } from '../rewards/RewardPool.tsx'
 import { ResponseViewer } from '../responses/ResponseViewer.tsx'
@@ -26,7 +26,10 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
   const [boostOpen, setBoostOpen] = useState(false)
   const [joinedFromBackend, setJoinedFromBackend] = useState(false)
   const [passOpen, setPassOpen] = useState(false)
+  const [tipOpen, setTipOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
+  const [ralliReactionCount, setRalliReactionCount] = useState(0)
+  const updateRalliReactionCount = useCallback((count: number) => setRalliReactionCount(count), [])
   const { user } = useBackend()
   const joined = Boolean(unlockedResponseId) || joinedFromBackend
   const isCreator = Boolean(user && ralli.creatorId === user.id)
@@ -67,20 +70,21 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
               <span><strong>{ralli.author}</strong><span>started this Ralli</span></span>
               <small>{ralli.time} ago</small>
             </span>
-            <button className="icon-button" type="button" aria-label="Share Ralli" onClick={() => void navigator.share?.({ title: ralli.prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralli.id}` })}><Share2 aria-hidden="true" /></button>
+            <button className="icon-button" type="button" aria-label="Pass this Ralli on" onClick={() => setPassOpen(true)}><Repeat2 aria-hidden="true" /></button>
           </div>
           <h1 id="ralli-title">{ralli.prompt}</h1>
           {ralli.description && <p className="detail-copy">{ralli.description}</p>}
 
           <section className="ralli-primary-actions" aria-label="Ralli actions">
-            <RalliReactions ralliId={ralli.id} />
+            <RalliReactions ralliId={ralli.id} onCountChange={updateRalliReactionCount} />
             <Comments ralliId={ralli.id} expanded={commentsOpen} onToggle={() => setCommentsOpen((value) => !value)} />
-            <button className="response-action" type="button" onClick={() => void navigator.share?.({ title: ralli.prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralli.id}` })}><Share2 aria-hidden="true" /><small>Share</small></button>
+            {!isCreator && <button className="response-action" type="button" onClick={() => setTipOpen(true)}><Coins aria-hidden="true" /><small>Tip creator</small></button>}
+            <button className="response-action" type="button" onClick={() => setPassOpen(true)}><Repeat2 aria-hidden="true" /><small>Pass it on</small></button>
           </section>
 
           <div className="detail-stats">
             <span><UsersRound aria-hidden="true" /><strong>{ralli.participants}</strong><small>responses</small></span>
-            <span><Heart aria-hidden="true" /><strong>{ralli.reactions}</strong><small>reactions</small></span>
+            <span><Heart aria-hidden="true" /><strong>{ralliReactionCount}</strong><small>reactions</small></span>
             <span><Repeat2 aria-hidden="true" /><strong>{ralli.passes}</strong><small>passes</small></span>
             <span><Clock3 aria-hidden="true" /><strong>{hoursLeft(ralli.endsAt)}</strong><small>left</small></span>
           </div>
@@ -112,7 +116,8 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
         </footer>
       </section>
       {boostOpen && <Boost ralliId={ralli.id} creator={ralli.author} ralli={ralli.prompt} pool={ralli.reward} onClose={() => setBoostOpen(false)} />}
-      {passOpen && unlockedResponseId && <PassItOn ralliId={ralli.id} responseId={unlockedResponseId} prompt={ralli.prompt} responseAuthor="You" onClose={() => setPassOpen(false)} />}
+      {tipOpen && <Boost mode="tip" ralliId={ralli.id} creator={ralli.author} ralli={ralli.prompt} pool={ralli.starterReward} onClose={() => setTipOpen(false)} />}
+      {passOpen && <PassItOn ralliId={ralli.id} responseId={unlockedResponseId ?? null} prompt={ralli.prompt} responseAuthor={unlockedResponseId ? 'You' : ralli.author} onClose={() => setPassOpen(false)} />}
     </div>
   )
 }

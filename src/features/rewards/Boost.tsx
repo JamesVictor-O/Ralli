@@ -9,19 +9,16 @@ import { fetchVerifiedCreatorAddress } from '../../lib/rallis.ts'
 
 const presetAmounts = ['1', '2', '5', '10']
 
-function paymentError(error: unknown) {
-  return actionableError(error, 'The boost could not be sent. No NIM was deducted—try again.')
-}
-
 interface BoostProps {
   onClose: () => void
   ralliId: string
   creator?: string
   ralli?: string
   pool?: number
+  mode?: 'boost' | 'tip'
 }
 
-export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'this Ralli', pool = 0 }: BoostProps) {
+export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'this Ralli', pool = 0, mode = 'boost' }: BoostProps) {
   const { status, connect } = useWallet()
   const [amount, setAmount] = useState('2')
   const [state, setState] = useState<'idle' | 'submitting' | 'confirming' | 'success' | 'sent-unconfirmed'>('idle')
@@ -46,18 +43,18 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
     setError('')
     setState('submitting')
     try {
-      const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli boost: ${ralliId}` })
-      await recordPaymentSubmission({ kind: 'boost', ralliId, amountLuna: nimToLuna(amount), transactionHash })
+      const transactionHash = await sendNimPayment({ recipient: recipient ?? '', amountNim: amount, message: `Ralli ${mode}: ${ralliId}` })
+      await recordPaymentSubmission({ kind: mode === 'tip' ? 'ralli_tip' : 'boost', ralliId, amountLuna: nimToLuna(amount), transactionHash })
       setState('confirming')
       try {
-        await confirmPayment({ kind: 'boost', transactionHash })
+        await confirmPayment({ kind: mode === 'tip' ? 'ralli_tip' : 'boost', transactionHash })
         setState('success')
       } catch (confirmFailure) {
         console.error('Boost confirmation failed', confirmFailure)
         setState('sent-unconfirmed')
       }
     } catch (paymentFailure) {
-      setError(paymentError(paymentFailure))
+      setError(actionableError(paymentFailure, `The ${mode} could not be sent. No NIM was deducted—try again.`))
       setState('idle')
     }
   }
@@ -66,32 +63,32 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
     <div className="wallet-backdrop wallet-backdrop--nested" role="dialog" aria-modal="true" aria-labelledby="boost-title">
       <section className="payment-panel">
         <header className="wallet-panel__header">
-          <div><p className="eyebrow">Add to the reward</p><h2 id="boost-title">Boost this Ralli</h2></div>
+          <div><p className="eyebrow">{mode === 'tip' ? 'Thank the creator directly' : 'Add to the momentum'}</p><h2 id="boost-title">{mode === 'tip' ? `Tip ${creator}` : 'Boost this Ralli'}</h2></div>
           <button className="icon-button" type="button" aria-label="Close Boost" disabled={state === 'submitting' || state === 'confirming'} onClick={onClose}><X aria-hidden="true" /></button>
         </header>
 
         {state === 'confirming' ? (
           <div className="payment-success" aria-live="polite">
             <span><LoaderCircle className="spin" aria-hidden="true" /></span><h3>Confirming on-chain…</h3>
-            <p>Your {amount} NIM boost is on its way. This usually takes a few seconds.</p>
+            <p>Your {amount} NIM {mode} is on its way. This usually takes a few seconds.</p>
           </div>
         ) : state === 'success' ? (
           <div className="payment-success" aria-live="polite">
-            <span><Check aria-hidden="true" /></span><h3>Boost confirmed</h3>
+            <span><Check aria-hidden="true" /></span><h3>{mode === 'tip' ? 'Tip confirmed' : 'Boost confirmed'}</h3>
             <p>Your {amount} NIM was sent directly to {creator}.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : state === 'sent-unconfirmed' ? (
           <div className="payment-success" aria-live="polite">
-            <span><Check aria-hidden="true" /></span><h3>Boost sent</h3>
-            <p>Your {amount} NIM transaction is on the network but is taking longer than usual to confirm. It'll count once it settles — no need to send it again.</p>
+            <span><Check aria-hidden="true" /></span><h3>{mode === 'tip' ? 'Tip sent' : 'Boost sent'}</h3>
+            <p>Your {amount} NIM {mode} is on the network but is taking longer than usual to confirm. It’ll count once it settles—don’t send it again.</p>
             <button className="button button--ink button--wide" type="button" onClick={onClose}>Done</button>
           </div>
         ) : status !== 'connected' ? (
           <div className="wallet-state">
             <span className="wallet-state__icon"><ShieldCheck aria-hidden="true" /></span>
-            <h3>Connect before boosting</h3>
-            <p>Choose your public account first. After connecting, you’ll tap Boost again to approve the payment separately.</p>
+            <h3>Connect before {mode === 'tip' ? 'tipping' : 'boosting'}</h3>
+            <p>Choose your public account first. Then approve the {mode} separately in your wallet.</p>
             <button className="button button--ink button--wide" type="button" disabled={status === 'connecting'}
               aria-busy={status === 'connecting'} onClick={() => void connect()}>
               {status === 'connecting' ? 'Waiting for approval…' : 'Connect Nimiq account'}
@@ -102,8 +99,8 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
         ) : !recipient ? (
           <div className="wallet-state" role="alert">
             <span className="wallet-state__icon wallet-state__icon--coral"><Zap aria-hidden="true" /></span>
-            <h3>Boosts need a recipient</h3>
-            <p>{creator} needs to verify a Nimiq address before receiving direct boosts.</p>
+            <h3>{mode === 'tip' ? 'Tips' : 'Boosts'} need a recipient</h3>
+            <p>{creator} needs to verify a Nimiq address before receiving direct {mode === 'tip' ? 'tips' : 'boosts'}.</p>
             <button className="button button--soft" type="button" onClick={onClose}>Close</button>
           </div>
         ) : (
@@ -127,7 +124,7 @@ export function Boost({ onClose, ralliId, creator = 'Ralli creator', ralli = 'th
             <div className="approval-note"><ShieldCheck aria-hidden="true" /><span>Nimiq Pay will show the recipient and amount before anything is sent.</span></div>
             <button className="button button--ink button--wide" type="submit" disabled={state === 'submitting'} aria-busy={state === 'submitting'}>
               {state === 'submitting' && <LoaderCircle className="spin" aria-hidden="true" />}
-              {state === 'submitting' ? 'Waiting for approval…' : `Boost with ${amount || '0'} NIM`}
+              {state === 'submitting' ? 'Waiting for approval…' : `${mode === 'tip' ? 'Tip' : 'Boost'} with ${amount || '0'} NIM`}
             </button>
           </form>
         )}

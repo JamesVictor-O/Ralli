@@ -15,7 +15,7 @@ async function invokeOrThrow<T>(name: string, body: Record<string, unknown>) {
 }
 
 export async function recordPaymentSubmission(body: {
-  kind: 'creator_reward' | 'boost' | 'tip'
+  kind: 'creator_reward' | 'boost' | 'ralli_tip' | 'tip'
   ralliId?: string
   responseId?: string
   amountLuna: number
@@ -29,7 +29,7 @@ export async function recordPaymentSubmission(body: {
 // client, the same one used for balance reads) then asks the server to cross-check and flip
 // the row to 'confirmed'. Called right after recordPaymentSubmission, with the same details.
 export async function confirmPayment(body: {
-  kind: 'creator_reward' | 'boost' | 'tip'
+  kind: 'creator_reward' | 'boost' | 'ralli_tip' | 'tip'
   transactionHash: string
 }) {
   const settled = await waitForTransactionConfirmation(body.transactionHash)
