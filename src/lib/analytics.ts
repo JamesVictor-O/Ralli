@@ -1,5 +1,6 @@
 import type { Json } from '../types/database.ts'
 import { supabase } from './supabase.ts'
+import { readBrowserStorage, writeBrowserStorage } from './browserStorage.ts'
 
 export type ProductEventName =
   | 'app_opened'
@@ -26,10 +27,10 @@ export interface ProductEventContext {
 const sessionKey = 'ralli-product-session'
 
 function sessionId() {
-  const existing = window.sessionStorage.getItem(sessionKey)
+  const existing = readBrowserStorage('session', sessionKey)
   if (existing) return existing
   const created = crypto.randomUUID()
-  window.sessionStorage.setItem(sessionKey, created)
+  writeBrowserStorage('session', sessionKey, created)
   return created
 }
 

@@ -1,5 +1,5 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, X } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Image, LoaderCircle, Type, Video, WalletCards, X } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createResponse, ensureWalletAttached } from '../../lib/social.ts'
@@ -16,9 +16,10 @@ interface JoinRalliProps {
   onClose: () => void
   onSeeResponses: (responseId: string) => void
   onPosted?: (responseId: string) => void
+  onOpenWallet: () => void
 }
 
-export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, onPosted }: JoinRalliProps) {
+export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, onPosted, onOpenWallet }: JoinRalliProps) {
   const [format, setFormat] = useState<'photo' | 'video' | 'text'>('photo')
   const [caption, setCaption] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -131,14 +132,14 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, on
     setUploadProgress(0)
     setSubmitStage('wallet')
     try {
-      await ensureWalletAttached(user.id, account)
+      const verifiedUserId = await ensureWalletAttached(user.id, account)
       if (mediaOptimizationRef.current && mediaPreparing) setSubmitStage('prepare')
       const preparedMedia = mediaOptimizationRef.current ? await mediaOptimizationRef.current.catch(() => media) : media
       const poster = videoPosterRef.current ? await videoPosterRef.current.catch(() => null) : null
       if (earlyVideoUploadRef.current) setSubmitStage('upload')
       const earlyUpload = earlyVideoUploadRef.current ? await earlyVideoUploadRef.current : null
-      const createdResponseId = await createResponse({ userId: user.id, ralliId, format, text: caption, media: earlyUpload ? null : preparedMedia, poster: earlyUpload ? null : poster, uploadedMediaPath: earlyUpload?.mediaPath, uploadedPosterPath: earlyUpload?.posterPath, onStage: setSubmitStage, onUploadProgress: setUploadProgress })
-      trackProductEvent('response_published', { userId: user.id, ralliId, responseId: createdResponseId, source: 'response_flow', properties: { format } })
+      const createdResponseId = await createResponse({ userId: verifiedUserId, ralliId, format, text: caption, media: earlyUpload ? null : preparedMedia, poster: earlyUpload ? null : poster, uploadedMediaPath: earlyUpload?.mediaPath, uploadedPosterPath: earlyUpload?.posterPath, onStage: setSubmitStage, onUploadProgress: setUploadProgress })
+      trackProductEvent('response_published', { userId: verifiedUserId, ralliId, responseId: createdResponseId, source: 'response_flow', properties: { format } })
       setResponseId(createdResponseId)
       setSubmitted(true)
       onPosted?.(createdResponseId)
@@ -221,11 +222,18 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, on
             <small>{caption.length}/160 characters</small>
           </div>
         )}
-        {error && <p className="payment-error" role="alert">{error}</p>}
+        {!account && (
+          <div className="create-wallet-gate response-wallet-gate">
+            <span><WalletCards aria-hidden="true" /></span>
+            <div><strong>Connect Nimiq to post</strong><small>Your wallet identifies this response as yours. Posting does not send NIM.</small></div>
+            <button type="button" onClick={onOpenWallet}>Connect Nimiq</button>
+          </div>
+        )}
+        {error && account && <p className="payment-error" role="alert">{error}</p>}
         <footer className="flow-actions flow-actions--static">
           <p>Posting does not trigger a wallet transaction.</p>
-          <button className="button button--ink button--wide" type="button" disabled={submitting} aria-busy={submitting} onClick={() => void submitResponse()}>
-            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'prepare' ? 'Preparing photo…' : submitStage === 'upload' ? `Uploading response${uploadProgress ? ` · ${uploadProgress}%` : '…'}` : 'Publishing response…' : error ? 'Try posting again' : 'Post response'}
+          <button className="button button--ink button--wide" type="button" disabled={submitting} aria-busy={submitting} onClick={account ? () => void submitResponse() : onOpenWallet}>
+            {submitting && <LoaderCircle className="spin" aria-hidden="true" />}{submitting ? submitStage === 'wallet' ? 'Checking wallet…' : submitStage === 'prepare' ? 'Preparing photo…' : submitStage === 'upload' ? `Uploading response${uploadProgress ? ` · ${uploadProgress}%` : '…'}` : 'Publishing response…' : !account ? 'Connect Nimiq to post' : error ? 'Try posting again' : 'Post response'}
           </button>
         </footer>
       </section>

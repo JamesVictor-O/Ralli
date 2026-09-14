@@ -42,11 +42,11 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
   async function copyLink() {
     if (!user) return setError('Ralli is still connecting. Try again in a moment.')
     try {
-      await ensureWalletAttached(user.id, account)
-      const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
+      const verifiedUserId = await ensureWalletAttached(user.id, account)
+      const token = inviteToken ?? await recordPass(ralliId, responseId, verifiedUserId)
       if (!inviteToken) {
         setInviteToken(token)
-        trackProductEvent('invitation_shared', { userId: user.id, ralliId, responseId: responseId ?? undefined, source: 'copy_link' })
+        trackProductEvent('invitation_shared', { userId: verifiedUserId, ralliId, responseId: responseId ?? undefined, source: 'copy_link' })
         analyticsTracked.current = true
       }
       await navigator.clipboard.writeText(`${baseUrl}&invite=${token}`)
@@ -61,8 +61,8 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
     setError('')
     let didShare = shareCompleted
     try {
-      await ensureWalletAttached(user.id, account)
-      const token = inviteToken ?? await recordPass(ralliId, responseId, user.id)
+      const verifiedUserId = await ensureWalletAttached(user.id, account)
+      const token = inviteToken ?? await recordPass(ralliId, responseId, verifiedUserId)
       const createdInvitation = !inviteToken
       if (createdInvitation) setInviteToken(token)
       const invitationUrl = `${baseUrl}&invite=${token}`
@@ -70,7 +70,7 @@ export function PassItOn({ ralliId, responseId, prompt, responseAuthor, onClose 
         if (nativeShare) await nativeShare.call(navigator, { title: 'Join this Ralli', text: `${responseAuthor} challenged you: “${prompt}”`, url: invitationUrl })
         else { await navigator.clipboard.writeText(invitationUrl); setCopied(true) }
         if (!analyticsTracked.current) {
-          trackProductEvent('invitation_shared', { userId: user.id, ralliId, responseId: responseId ?? undefined, source: nativeShare ? 'native_share' : 'copy_link' })
+          trackProductEvent('invitation_shared', { userId: verifiedUserId, ralliId, responseId: responseId ?? undefined, source: nativeShare ? 'native_share' : 'copy_link' })
           analyticsTracked.current = true
         }
         setShareCompleted(true)

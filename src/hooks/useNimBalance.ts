@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { WALLET_BALANCE_CHANGED_EVENT } from '../nimiq/payments.ts'
 
 export function useNimBalance(address: string | null) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -28,6 +29,12 @@ export function useNimBalance(address: string | null) {
 
   useEffect(() => {
     void Promise.resolve().then(refresh)
+  }, [refresh])
+
+  useEffect(() => {
+    const refreshAfterPayment = () => { window.setTimeout(() => void refresh(), 750) }
+    window.addEventListener(WALLET_BALANCE_CHANGED_EVENT, refreshAfterPayment)
+    return () => window.removeEventListener(WALLET_BALANCE_CHANGED_EVENT, refreshAfterPayment)
   }, [refresh])
 
   return { status, balance, error, refresh }

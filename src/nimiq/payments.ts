@@ -3,6 +3,11 @@ import { getNimiqHub, isNimiqPayContext } from './hub.ts'
 import { isNimiqError } from './types.ts'
 
 export const LUNA_PER_NIM = 100_000
+export const WALLET_BALANCE_CHANGED_EVENT = 'ralli:wallet-balance-changed'
+
+function announceBalanceChanged() {
+  window.dispatchEvent(new Event(WALLET_BALANCE_CHANGED_EVENT))
+}
 
 export interface NimPayment {
   recipient: string
@@ -27,6 +32,7 @@ export async function sendNimPayment({ recipient, amountNim, message }: NimPayme
       value: nimToLuna(amountNim),
       extraData: message,
     })
+    announceBalanceChanged()
     return transaction.hash
   }
   const client = await getNimiqClient()
@@ -34,5 +40,6 @@ export async function sendNimPayment({ recipient, amountNim, message }: NimPayme
     ? await client.sendBasicTransactionWithData({ recipient, value: nimToLuna(amountNim), data: message })
     : await client.sendBasicTransaction({ recipient, value: nimToLuna(amountNim) })
   if (isNimiqError(transaction)) throw new Error(transaction.error.message)
+  announceBalanceChanged()
   return transaction
 }

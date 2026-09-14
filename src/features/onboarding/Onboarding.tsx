@@ -115,15 +115,32 @@ export function Onboarding({ userId, onDone }: { userId: string; onDone: (commun
           })}</fieldset>}
           {error && communityStatus === 'ready' && <p className="payment-error" role="alert">{error}</p>}
           <div className="onboarding-actions"><button className="button button--soft" type="button" disabled={saving !== 'idle'} onClick={() => void skip()}>{saving === 'skipping' ? 'Skipping…' : 'Explore first'}</button><button className="button button--ink" type="button" disabled={communityStatus !== 'ready' || (communities.length > 0 && selectedIds.length === 0)} onClick={() => { setStep('identity'); setError('') }}>Continue <ArrowRight aria-hidden="true" /></button></div>
-        </div> : <form className="payment-form" onSubmit={save}>
-          <p className="onboarding-intro">This is how people recognize you when you respond, compete, and keep a chain moving.</p>
-          <input className="sr-only" ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatar} />
-          <button className="avatar-picker" type="button" onClick={() => avatarInputRef.current?.click()}><Avatar initials={initialsFrom(displayName)} avatarUrl={avatarPreview} className="avatar-picker__preview" /><span><Image aria-hidden="true" />{avatarFile ? 'Change photo' : 'Add a photo'}</span></button>
-          <div className="field"><label htmlFor="onboarding-name">Your name</label><input id="onboarding-name" type="text" autoComplete="name" maxLength={60} placeholder="Add your name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></div>
-          <div className="field"><label htmlFor="onboarding-handle">Username <span>Optional</span></label><div className="input-with-icon"><strong>@</strong><input id="onboarding-handle" type="text" autoComplete="username" maxLength={24} placeholder="yourname" value={handle} onChange={(event) => setHandle(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} /></div></div>
-          <aside className="onboarding-destination"><Sparkles aria-hidden="true" /><span><strong>Something is waiting for you.</strong><small>After setup, we’ll open {selectedCommunity?.name || 'Discover'} so you can join your first Ralli.</small></span></aside>
+        </div> : <form className="onboarding-identity" onSubmit={save}>
+          <p className="onboarding-intro">Create the identity people will recognize when you respond, compete, and keep a chain moving.</p>
+
+          <section className="onboarding-profile-card" aria-label="Your Ralli profile">
+            <input className="sr-only" ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatar} />
+            <button className="avatar-picker" type="button" onClick={() => avatarInputRef.current?.click()} aria-label={avatarFile ? 'Change profile photo' : 'Add a profile photo'}>
+              <span className="avatar-picker__media">
+                <Avatar initials={initialsFrom(displayName)} avatarUrl={avatarPreview} className="avatar-picker__preview" />
+                <i><Image aria-hidden="true" /></i>
+              </span>
+              <span className="avatar-picker__copy">
+                <strong>{avatarFile ? 'Change profile photo' : 'Add a profile photo'}</strong>
+                <small>Help familiar people spot you faster · optional</small>
+              </span>
+              <span className="avatar-picker__action">{avatarFile ? 'Change' : 'Add'}</span>
+            </button>
+
+            <div className="onboarding-identity__fields">
+              <div className="field"><label htmlFor="onboarding-name">Your name</label><input id="onboarding-name" type="text" autoComplete="name" maxLength={60} placeholder="What should people call you?" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></div>
+              <div className="field"><label htmlFor="onboarding-handle">Username <span>Optional</span></label><div className="input-with-icon"><strong>@</strong><input id="onboarding-handle" type="text" autoComplete="username" maxLength={24} placeholder="yourname" value={handle} onChange={(event) => setHandle(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} /></div></div>
+            </div>
+          </section>
+
+          <aside className="onboarding-destination"><span className="onboarding-destination__icon"><Sparkles aria-hidden="true" /></span><span><strong>Your first Ralli is waiting.</strong><small>Next, we’ll open {selectedCommunity?.name || 'Home'} so you can see what your community is doing.</small></span></aside>
           {error && <p className="payment-error" role="alert">{error}</p>}
-          <div className="onboarding-actions"><button className="button button--soft" type="button" disabled={saving !== 'idle'} onClick={() => setStep('interests')}>Back</button><button className="button button--ink" type="submit" disabled={saving !== 'idle'} aria-busy={saving === 'saving'}>{saving === 'saving' && <LoaderCircle className="spin" aria-hidden="true" />}{saving === 'saving' ? 'Joining your communities…' : <>Enter Ralli <ArrowRight aria-hidden="true" /></>}</button></div>
+          <div className="onboarding-actions onboarding-identity__actions"><button className="button button--soft" type="button" disabled={saving !== 'idle'} onClick={() => setStep('interests')}>Back</button><button className="button button--ink" type="submit" disabled={saving !== 'idle'} aria-busy={saving === 'saving'}>{saving === 'saving' && <LoaderCircle className="spin" aria-hidden="true" />}{saving === 'saving' ? 'Finishing setup…' : <>Enter Ralli <ArrowRight aria-hidden="true" /></>}</button></div>
         </form>}
       </section>
     </div>

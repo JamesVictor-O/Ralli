@@ -25,7 +25,7 @@ export function useUnreadActivityCount(user: User | null) {
   useEffect(() => {
     if (!user) return
     const database = requireSupabase()
-    const channel = database.channel(`unread-activity-${user.id}`)
+    const channel = database.channel(`unread-activity-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_events', filter: `user_id=eq.${user.id}` }, () => { void refresh() })
       .subscribe()
     return () => { void database.removeChannel(channel) }

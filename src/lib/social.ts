@@ -109,10 +109,16 @@ export async function ensureVerifiedProfile(userId: string, account: string | nu
 export async function ensureWalletAttached(userId: string, account: string | null) {
   try {
     await ensureVerifiedProfile(userId, account)
+    return userId
   } catch (gateError) {
     const message = gateError instanceof Error ? gateError.message : ''
     if (!account || !/verify this nimiq address/i.test(message)) throw gateError
     await verifyConnectedNimiqAddress(account)
-    await ensureVerifiedProfile(userId, account)
+    // Verification may sign this browser into the existing profile already tied to
+    // this address. Resolve that identity now so the action continues without reload.
+    const { data } = await requireSupabase().auth.getUser()
+    const verifiedUserId = data.user?.id ?? userId
+    await ensureVerifiedProfile(verifiedUserId, account)
+    return verifiedUserId
   }
 }

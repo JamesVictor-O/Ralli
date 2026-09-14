@@ -4,8 +4,9 @@ import type { NimiqClient } from '../nimiq/types.ts'
 import { listAccounts } from '../nimiq/accounts.ts'
 import { getNimiqClient } from '../nimiq/client.ts'
 import { bytesToHex, getNimiqHub, isMobileHubClient, isNimiqPayContext } from '../nimiq/hub.ts'
-import { completeVerification } from '../nimiq/signatures.ts'
+import { completeVerification, WALLET_VERIFICATION_CHANGED_EVENT } from '../nimiq/signatures.ts'
 import { WalletContext, type WalletStatus } from '../store/wallet.ts'
+import { readBrowserStorage, removeBrowserStorage, writeBrowserStorage } from '../lib/browserStorage.ts'
 
 function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
@@ -24,7 +25,7 @@ function friendlyError(error: unknown) {
 
 export function AppProviders({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<WalletStatus>('initializing')
-  const [account, setAccount] = useState<string | null>(() => window.localStorage.getItem('ralli-nimiq-address'))
+  const [account, setAccount] = useState<string | null>(() => readBrowserStorage('local', 'ralli-nimiq-address'))
   const [consensus, setConsensus] = useState<boolean | null>(null)
   const [blockNumber, setBlockNumber] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +51,7 @@ export function AppProviders({ children }: PropsWithChildren) {
       hub.on(HubApi.RequestType.CHOOSE_ADDRESS, (result) => {
         resolvedFromRedirect = true
         setAccount(result.address)
-        window.localStorage.setItem('ralli-nimiq-address', result.address)
+        writeBrowserStorage('local', 'ralli-nimiq-address', result.address)
         setError(null)
         setStatus('connected')
       }, (redirectError) => {
@@ -81,7 +82,7 @@ export function AppProviders({ children }: PropsWithChildren) {
       } catch (checkError) {
         console.error('Nimiq Hub redirect check failed', checkError)
       }
-      if (!resolvedFromRedirect) setStatus(window.localStorage.getItem('ralli-nimiq-address') ? 'connected' : 'ready')
+      if (!resolvedFromRedirect) setStatus(readBrowserStorage('local', 'ralli-nimiq-address') ? 'connected' : 'ready')
       return
     }
     setStatus('initializing')
@@ -100,6 +101,12 @@ export function AppProviders({ children }: PropsWithChildren) {
   useEffect(() => {
     void Promise.resolve().then(initialize)
   }, [initialize])
+
+  useEffect(() => {
+    const refreshVerificationState = () => setVerificationTick((value) => value + 1)
+    window.addEventListener(WALLET_VERIFICATION_CHANGED_EVENT, refreshVerificationState)
+    return () => window.removeEventListener(WALLET_VERIFICATION_CHANGED_EVENT, refreshVerificationState)
+  }, [])
 
   const connect = useCallback(async () => {
     setStatus('connecting')
@@ -120,7 +127,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         return
       }
       setAccount(accounts[0])
-      window.localStorage.setItem('ralli-nimiq-address', accounts[0])
+      writeBrowserStorage('local', 'ralli-nimiq-address', accounts[0])
       setStatus('connected')
       if (isNimiqPayContext()) {
         const client = await getNimiqClient()
@@ -135,7 +142,7 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   const disconnect = useCallback(() => {
     setAccount(null)
-    window.localStorage.removeItem('ralli-nimiq-address')
+    removeBrowserStorage('local', 'ralli-nimiq-address')
     setStatus('ready')
     setError(null)
   }, [])

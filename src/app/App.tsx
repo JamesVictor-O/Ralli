@@ -19,6 +19,8 @@ import { fetchRalliById } from '../lib/rallis.ts'
 import { openInvitation, type InvitationPreview } from '../lib/invitations.ts'
 import { trackProductEvent } from '../lib/analytics.ts'
 import { actionableError } from '../lib/errors.ts'
+import { readBrowserStorage, writeBrowserStorage } from '../lib/browserStorage.ts'
+import { MemberSocialProof } from '../components/ui/MemberSocialProof.tsx'
 import '../styles/index.css'
 
 const Activity = lazy(() => import('../features/activity/Activity.tsx').then((module) => ({ default: module.Activity })))
@@ -44,7 +46,7 @@ const navItems = [
 ]
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => window.sessionStorage.getItem('ralli-splash-seen') !== 'true')
+  const [showSplash, setShowSplash] = useState(() => readBrowserStorage('session', 'ralli-splash-seen') !== 'true')
   const reduceMotion = useReducedMotion()
   const [activeNav, setActiveNav] = useState(() => new URLSearchParams(window.location.search).has('community') ? 'Communities' : 'Discover')
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
@@ -67,7 +69,7 @@ export default function App() {
   const appOpenTracked = useRef(false)
   const showOnboarding = Boolean(user && myProfile && !myProfile.onboarded)
   const finishSplash = useCallback(() => {
-    window.sessionStorage.setItem('ralli-splash-seen', 'true')
+    writeBrowserStorage('session', 'ralli-splash-seen', 'true')
     setShowSplash(false)
   }, [])
   const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
@@ -222,6 +224,7 @@ export default function App() {
           <div><p className="eyebrow">{today}</p><h1 id="discover-heading">What will you do today?</h1></div>
           <button className="desktop-search" type="button" onClick={() => setSearchOpen(true)}><Search aria-hidden="true" /><span>Search Rallis</span><kbd>⌘ K</kbd></button>
         </section>
+        <div className="mobile-member-proof"><MemberSocialProof /></div>
 
         <PendingChallenge refreshKey={feedRefreshKey} onJoin={(ralli) => openRalli(ralli, 'join', 'pending_invitation')} />
         <TodaysRalli onJoin={(ralli) => openRalli(ralli, 'join', 'daily_ralli')} onOpen={(ralli) => openRalli(ralli, 'detail', 'daily_ralli')} refreshKey={feedRefreshKey} onLoaded={setTodaysRalliId} />
@@ -256,6 +259,7 @@ export default function App() {
             <span className="rail-icon rail-icon--violet"><Sparkles aria-hidden="true" /></span>
           </div>
           <p>Create a challenge, optionally fund it with NIM, then pass it into the community.</p>
+          <MemberSocialProof />
           <button className="text-button" type="button" onClick={() => { setCreateCommunity(null); setActiveFlow('create') }}>Start a Ralli <ChevronRight aria-hidden="true" /></button>
         </div>
         <div className="rail-card">
@@ -276,7 +280,7 @@ export default function App() {
         }} />
       )}
       {activeFlow === 'join' && selectedRalli && (
-        <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onSeeResponses={(responseId) => { setFreshResponse({ ralliId: selectedRalli.id, responseId }); setActiveFlow('detail') }} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
+        <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onOpenWallet={() => setWalletOpen(true)} onSeeResponses={(responseId) => { setFreshResponse({ ralliId: selectedRalli.id, responseId }); setActiveFlow('detail') }} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
       )}
       {activeFlow === 'create' && (
         <CreateRalli community={createCommunity} onOpenWallet={() => setWalletOpen(true)} onClose={() => { setActiveFlow(null); setCreateCommunity(null) }} onCreated={(id) => {
@@ -299,12 +303,13 @@ export default function App() {
       </Suspense>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
-        {navItems.map((item) => {
+        {navItems.filter((item) => item.label !== 'Activity').map((item) => {
           const Icon = item.icon
           const isActive = activeNav === item.label
+          const mobileLabel = item.label === 'Discover' ? 'Home' : item.label
           return (
             <button className={`bottom-nav__item ${item.primary ? 'bottom-nav__item--primary' : ''} ${isActive ? 'is-active' : ''}`}
-              key={item.label} type="button" aria-label={item.primary ? 'Start a Ralli' : item.label}
+              key={item.label} type="button" aria-label={item.primary ? 'Start a Ralli' : mobileLabel}
               aria-current={isActive ? 'page' : undefined} onClick={() => {
                 if (item.primary) {
                   setCreateCommunity(null)
@@ -315,7 +320,7 @@ export default function App() {
                   setActiveNav(item.label)
                 }
               }}>
-              <span className="icon-with-badge"><Icon aria-hidden="true" />{item.label === 'Activity' && unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span><span>{item.label}</span>
+              <span className="icon-with-badge"><Icon aria-hidden="true" /></span><span>{mobileLabel}</span>
             </button>
           )
         })}

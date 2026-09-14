@@ -100,11 +100,11 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
     setSubmitting(true)
     setPublishStage('wallet')
     try {
-      await ensureWalletAttached(user.id, account)
+      const verifiedUserId = await ensureWalletAttached(user.id, account)
       if (coverOptimizationRef.current && coverPreparing) setPublishStage('prepare')
       const preparedCover = coverOptimizationRef.current ? await coverOptimizationRef.current.catch(() => cover) : cover
       const id = await createRalli({
-        userId: user.id,
+        userId: verifiedUserId,
         prompt,
         visibility,
         durationHours: Number(duration),

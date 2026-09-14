@@ -33,6 +33,12 @@ export interface SignatureProof {
   signatureMode: 'raw' | 'hub'
 }
 
+export const WALLET_VERIFICATION_CHANGED_EVENT = 'ralli:wallet-verification-changed'
+
+function announceVerificationChanged() {
+  window.dispatchEvent(new Event(WALLET_VERIFICATION_CHANGED_EVENT))
+}
+
 // Finishes verification once a signature has been produced — shared by the direct
 // (popup/Nimiq Pay) path and the mobile redirect-return handler in AppProviders.
 export async function completeVerification(proof: SignatureProof) {
@@ -48,9 +54,11 @@ export async function completeVerification(proof: SignatureProof) {
       type: 'email',
     })
     if (otpError) throw new Error('This wallet is already registered, but Ralli could not switch you into that account. Please try again.')
+    announceVerificationChanged()
     return { verified: true as const, address: data.address }
   }
 
+  announceVerificationChanged()
   return data
 }
 

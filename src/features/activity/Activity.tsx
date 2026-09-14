@@ -60,7 +60,7 @@ export function Activity({ onOpenRalli, onJoinRalli, onRead }: { onOpenRalli: (r
   useEffect(() => {
     if (!user) return
     const database = requireSupabase()
-    const channel = database.channel(`activity-page-${user.id}`)
+    const channel = database.channel(`activity-page-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_events', filter: `user_id=eq.${user.id}` }, () => { void load(); onRead?.() })
       .subscribe()
     return () => { void database.removeChannel(channel) }
