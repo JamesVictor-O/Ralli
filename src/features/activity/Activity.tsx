@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Bell, ChevronRight, Heart, LoaderCircle, MessageCircle, Repeat2, Sparkles, Zap } from 'lucide-react'
+import { AlertCircle, Bell, ChevronRight, Heart, LoaderCircle, MessageCircle, Plus, Repeat2, Sparkles, Zap } from 'lucide-react'
 import { requireSupabase } from '../../lib/supabase.ts'
 import { fetchRalliById } from '../../lib/rallis.ts'
 import type { Dare } from '../discover/DareCard.tsx'
@@ -11,6 +11,7 @@ type ActivityRow = Database['public']['Tables']['activity_events']['Row']
 
 const presentation = {
   reaction: { icon: Heart, tone: 'coral', title: (actor: string) => `${actor} reacted to your response`, action: 'View response', kind: 'Social' },
+  ralli_reaction: { icon: Heart, tone: 'coral', title: (actor: string) => `${actor} reacted to your Ralli`, action: 'View Ralli', kind: 'Social' },
   pass: { icon: Repeat2, tone: 'violet', title: (actor: string) => `${actor} passed your Ralli on`, action: 'See chain', kind: 'Social' },
   response: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} joined your Ralli`, action: 'Watch response', kind: 'Social' },
   tip: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} sent you a NIM tip`, action: 'View response', kind: 'NIM' },
@@ -19,6 +20,7 @@ const presentation = {
   invitation_response: { icon: Zap, tone: 'lime', title: (actor: string) => `${actor} responded through your invitation`, action: 'Watch response', kind: 'Social' },
   payment_confirmed: { icon: Sparkles, tone: 'lime', title: () => 'Your NIM payment was confirmed', action: 'View Ralli', kind: 'NIM' },
   comment: { icon: MessageCircle, tone: 'blue', title: (actor: string) => `${actor} commented on your post`, action: 'View comment', kind: 'Social' },
+  ralli_created: { icon: Plus, tone: 'lime', title: () => 'Your Ralli is live', action: 'Open Ralli', kind: 'Social' },
 } as const
 
 function relativeTime(value: string) {
@@ -105,7 +107,7 @@ export function Activity({ onOpenRalli, onJoinRalli, onRead }: { onOpenRalli: (r
     <div className="page-tabs" role="tablist" aria-label="Activity filters">{(['All', 'Social', 'NIM'] as Filter[]).map((item) => <button className={filter === item ? 'is-active' : ''} type="button" role="tab" aria-selected={filter === item} key={item} onClick={() => setFilter(item)}>{item}</button>)}</div>
     {status === 'loading' && <div className="empty-state" aria-busy="true"><span className="empty-state__icon"><LoaderCircle className="spin" aria-hidden="true" /></span><h2>Loading activity…</h2></div>}
     {status === 'error' && <div className="empty-state" role="alert"><span className="empty-state__icon"><AlertCircle aria-hidden="true" /></span><h2>Activity didn’t load</h2><button className="button button--ink" type="button" onClick={() => void load()}>Try again</button></div>}
-    {(status === 'empty' || (status === 'success' && !visibleEvents.length)) && <div className="empty-state"><span className="empty-state__icon"><Bell aria-hidden="true" /></span><h2>All caught up</h2><p>Your reactions, passes, tips, and boosts will appear here.</p></div>}
+    {(status === 'empty' || (status === 'success' && !visibleEvents.length)) && <div className="empty-state"><span className="empty-state__icon"><Bell aria-hidden="true" /></span><h2>Nothing here yet</h2><p>Your published Rallis, reactions, responses, passes, tips, and boosts will appear here.</p></div>}
     {status === 'success' && visibleEvents.length > 0 && <div className="activity-list"><section className="activity-group" aria-labelledby="activity-recent"><h2 id="activity-recent">Your next moves</h2><div className="activity-card">{visibleEvents.map((event) => {
       const item = presentation[event.kind as keyof typeof presentation] ?? presentation.response
       const Icon = item.icon

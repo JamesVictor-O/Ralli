@@ -50,6 +50,7 @@ export default function App() {
   const [activeFlow, setActiveFlow] = useState<'detail' | 'join' | 'create' | null>(null)
   const [selectedRalli, setSelectedRalli] = useState<Dare | null>(null)
   const [feedRefreshKey, setFeedRefreshKey] = useState(0)
+  const [freshRalli, setFreshRalli] = useState<Dare | null>(null)
   const [freshResponse, setFreshResponse] = useState<{ ralliId: string; responseId: string } | null>(null)
   const [todaysRalliId, setTodaysRalliId] = useState<string | null>(null)
   const [walletOpen, setWalletOpen] = useState(false)
@@ -212,7 +213,7 @@ export default function App() {
             <button className="icon-button" type="button" aria-label="Open activity" onClick={() => setActiveNav('Activity')}>
               <span className="icon-with-badge"><Bell aria-hidden="true" />{unreadActivity > 0 && <span className="nav-badge" aria-hidden="true" />}</span>
             </button>
-            <button className={`icon-button wallet-trigger ${walletStatus === 'connected' ? 'is-connected' : ''}`} type="button" aria-label="Open Nimiq wallet" onClick={() => setWalletOpen(true)}><WalletCards aria-hidden="true" /></button>
+            <button className={`icon-button wallet-trigger ${walletStatus === 'connected' ? 'is-connected' : ''}`} type="button" aria-label="Open Nimiq wallet" onClick={() => setWalletOpen(true)}><WalletCards aria-hidden="true" /><span>Wallet</span></button>
           </div>
         </header>
 
@@ -239,12 +240,12 @@ export default function App() {
         <div className="feed-heading">
           <div><p className="eyebrow">Happening now</p><h2>Made for joining</h2></div>
         </div>
-        <DareFeed onOpen={(ralli) => openRalli(ralli, 'detail', 'feed')} onJoin={(ralli) => openRalli(ralli, 'join', 'feed')} onBoost={setBoostTarget} onCreate={() => { setCreateCommunity(null); setActiveFlow('create') }} refreshKey={feedRefreshKey} excludeId={todaysRalliId} />
+        <DareFeed onOpen={(ralli) => openRalli(ralli, 'detail', 'feed')} onJoin={(ralli) => openRalli(ralli, 'join', 'feed')} onBoost={setBoostTarget} onCreate={() => { setCreateCommunity(null); setActiveFlow('create') }} refreshKey={feedRefreshKey} excludeId={todaysRalliId} freshRalli={freshRalli} />
         </>)}
         {activeNav === 'Communities' && <CommunityHub initialSlug={communitySlug} onSlugChange={openCommunity} onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'community')} onJoinRalli={(ralli) => openRalli(ralli, 'join', 'community')} onBoost={setBoostTarget} onCreate={startCommunityRalli} />}
         {activeNav === 'Activity' && <Activity onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'activity')} onJoinRalli={(ralli) => openRalli(ralli, 'join', 'activity')} onRead={() => void refreshUnreadActivity()} />}
         {activeNav === 'Chains' && <RalliChain onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'chains')} />}
-        {activeNav === 'Me' && <Profile />}
+        {activeNav === 'Me' && <Profile onOpenRalli={(ralli) => openRalli(ralli, 'detail', 'profile')} />}
       </main>
 
       {activeNav === 'Discover' && (
@@ -278,9 +279,13 @@ export default function App() {
         <JoinRalli ralliId={selectedRalli.id} prompt={selectedRalli.prompt} onBack={() => setActiveFlow('detail')} onClose={closeRalliFlow} onSeeResponses={(responseId) => { setFreshResponse({ ralliId: selectedRalli.id, responseId }); setActiveFlow('detail') }} onPosted={() => setFeedRefreshKey((value) => value + 1)} />
       )}
       {activeFlow === 'create' && (
-        <CreateRalli community={createCommunity} onClose={() => { setActiveFlow(null); setCreateCommunity(null) }} onCreated={(id) => {
+        <CreateRalli community={createCommunity} onOpenWallet={() => setWalletOpen(true)} onClose={() => { setActiveFlow(null); setCreateCommunity(null) }} onCreated={(id) => {
           setFeedRefreshKey((value) => value + 1)
-          void fetchRalliById(id).then(setSelectedRalli)
+          void fetchRalliById(id).then((ralli) => { setSelectedRalli(ralli); setFreshRalli(ralli) })
+        }} onOpenCreated={async (id) => {
+          const ralli = await fetchRalliById(id)
+          setCreateCommunity(null)
+          openRalli(ralli, 'detail', 'creation_success')
         }} />
       )}
       {showOnboarding && user && <Onboarding userId={user.id} onDone={(slug) => {

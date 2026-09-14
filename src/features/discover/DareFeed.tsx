@@ -10,21 +10,25 @@ interface DareFeedProps {
   onCreate: () => void
   refreshKey?: number
   excludeId?: string | null
+  freshRalli?: Dare | null
 }
 
-export function DareFeed({ onOpen, onJoin, onBoost, onCreate, refreshKey = 0, excludeId = null }: DareFeedProps) {
+export function DareFeed({ onOpen, onJoin, onBoost, onCreate, refreshKey = 0, excludeId = null, freshRalli = null }: DareFeedProps) {
   const { rallis: allRallis, status, error, retry } = useRalliFeed(demoRallis, refreshKey)
-  const rallis = excludeId ? allRallis.filter((ralli) => ralli.id !== excludeId) : allRallis
+  const visibleRallis = excludeId ? allRallis.filter((ralli) => ralli.id !== excludeId) : allRallis
+  const rallis = freshRalli && freshRalli.id !== excludeId
+    ? [freshRalli, ...visibleRallis.filter((ralli) => ralli.id !== freshRalli.id)]
+    : visibleRallis
 
-  if (status === 'loading') {
+  if (status === 'loading' && !freshRalli) {
     return <section className="dare-feed" aria-label="Loading Rallis" aria-busy="true">{[0, 1].map((item) => <div className="dare-card feed-skeleton" key={item}><span /><strong /><i /><div /></div>)}</section>
   }
 
-  if (status === 'error') {
+  if (status === 'error' && !freshRalli) {
     return <section className="feed-state" role="alert"><span className="feed-state__icon feed-state__icon--error"><AlertCircle aria-hidden="true" /></span><h3>Couldn’t load the Rallis</h3><p>{error || 'This is usually a network hiccup.'}</p><button className="button button--ink" type="button" onClick={() => void retry()}>Try again</button></section>
   }
 
-  if (status === 'empty') {
+  if (!rallis.length) {
     return <section className="feed-state"><span className="feed-state__icon"><Sparkles aria-hidden="true" /></span><h3>The first Ralli starts here</h3><p>No one has started one yet. Give the community something worth joining.</p><button className="button button--ink" type="button" onClick={onCreate}>Start a Ralli</button></section>
   }
 

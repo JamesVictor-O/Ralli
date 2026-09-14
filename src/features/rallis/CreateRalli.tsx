@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, UsersRound, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, UsersRound, WalletCards, X } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
@@ -7,9 +7,11 @@ import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
 
-export function CreateRalli({ onClose, onCreated, community }: {
+export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, community }: {
   onClose: () => void
   onCreated?: (id: string) => void
+  onOpenCreated?: (id: string) => Promise<void>
+  onOpenWallet?: () => void
   community?: { id: string; name: string; icon: string } | null
 }) {
   const [step, setStep] = useState<'form' | 'success'>('form')
@@ -26,6 +28,7 @@ export function CreateRalli({ onClose, onCreated, community }: {
   const [publishStage, setPublishStage] = useState<'wallet' | 'prepare' | 'cover' | 'publish'>('wallet')
   const [createdId, setCreatedId] = useState<string | null>(null)
   const [shareStatus, setShareStatus] = useState('')
+  const [openingCreated, setOpeningCreated] = useState(false)
   const promptRef = useRef<HTMLTextAreaElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
   const coverOptimizationRef = useRef<Promise<File> | null>(null)
@@ -135,6 +138,15 @@ export function CreateRalli({ onClose, onCreated, community }: {
     }
   }
 
+  async function openCreatedRalli() {
+    if (!createdId || !onOpenCreated || openingCreated) return
+    setOpeningCreated(true)
+    setError('')
+    try { await onOpenCreated(createdId) }
+    catch (failure) { setError(actionableError(failure, 'Your Ralli is live, but it could not be opened. Try again.')) }
+    finally { setOpeningCreated(false) }
+  }
+
   if (step === 'success') {
     return (
       <div className="flow-backdrop" role="dialog" aria-modal="true" aria-labelledby="created-title">
@@ -144,9 +156,11 @@ export function CreateRalli({ onClose, onCreated, community }: {
           <h1 id="created-title">Now pass it on.</h1>
           <p>Invite people to join. Anyone who loves it can boost you directly with NIM.</p>
           <div className="success-actions">
-            <button className="button button--ink button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>
+            {onOpenCreated && <button className="button button--ink button--wide" type="button" disabled={openingCreated} aria-busy={openingCreated} onClick={() => void openCreatedRalli()}>{openingCreated && <LoaderCircle className="spin" aria-hidden="true" />}{openingCreated ? 'Opening Ralli…' : 'See your Ralli'}</button>}
+            <button className="button button--soft button--wide" type="button" onClick={() => void shareCreatedRalli()}>Invite friends</button>
             {shareStatus && <p className="inline-status" role="status">{shareStatus}</p>}
-            <button className="button button--soft button--wide" type="button" onClick={onClose}>Back to Discover</button>
+            {error && <p className="payment-error" role="alert">{error}</p>}
+            <button className="text-button" type="button" onClick={onClose}>Back to Discover</button>
           </div>
         </section>
       </div>
@@ -210,14 +224,22 @@ export function CreateRalli({ onClose, onCreated, community }: {
             <div className="input-with-icon"><Clock3 aria-hidden="true" /><select id="duration" value={duration} onChange={(event) => setDuration(event.target.value)}><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></div>
           </div>
 
+          {!account && (
+            <div className="create-wallet-gate">
+              <span><WalletCards aria-hidden="true" /></span>
+              <div><strong>Connect Nimiq to publish</strong><small>Your address proves who started the Ralli. No payment is made.</small></div>
+              <button type="button" onClick={onOpenWallet}>Connect Nimiq</button>
+            </div>
+          )}
+
           {error && !promptInvalid && <p className="payment-error" role="alert">{error}</p>}
 
           <footer className="flow-actions flow-actions--static">
             <p>You can edit the description after publishing.</p>
             {backendStatus === 'error' && <button className="text-button" type="button" onClick={() => void retryBackend()}>Retry Supabase connection</button>}
-            <button className="button button--ink button--wide" type="submit" disabled={submitting} aria-busy={submitting}>
+            <button className="button button--ink button--wide" type={account ? 'submit' : 'button'} disabled={submitting} aria-busy={submitting} onClick={account ? undefined : onOpenWallet}>
               {submitting && <LoaderCircle className="spin" aria-hidden="true" />}
-              {submitting ? publishStage === 'wallet' ? 'Checking wallet…' : publishStage === 'prepare' ? 'Optimizing cover…' : publishStage === 'cover' ? 'Uploading cover…' : 'Publishing Ralli…' : 'Start this Ralli'}
+              {submitting ? publishStage === 'wallet' ? 'Checking wallet…' : publishStage === 'prepare' ? 'Optimizing cover…' : publishStage === 'cover' ? 'Uploading cover…' : 'Publishing Ralli…' : account ? 'Start this Ralli' : 'Connect Nimiq to continue'}
             </button>
           </footer>
         </form>

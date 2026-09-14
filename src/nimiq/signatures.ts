@@ -62,7 +62,9 @@ export async function verifyConnectedNimiqAddress(address: string) {
     const client = await getNimiqClient()
     const proof = await client.sign(challenge.message)
     if (isNimiqError(proof)) throw new Error(proof.error.message)
-    return completeVerification({ challengeId: challenge.challengeId, publicKey: proof.publicKey, signature: proof.signature, signatureMode: 'raw' })
+    // Nimiq Pay signs the standard prefixed Nimiq message hash, just like Hub.
+    // Labelling this as a raw Ed25519 signature made valid mobile proofs fail.
+    return completeVerification({ challengeId: challenge.challengeId, publicKey: proof.publicKey, signature: proof.signature, signatureMode: 'hub' })
   }
 
   if (isMobileHubClient()) {

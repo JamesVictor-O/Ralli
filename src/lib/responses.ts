@@ -110,6 +110,27 @@ export async function setReaction(responseId: string, userId: string, previous: 
   }
 }
 
+export async function fetchRalliReactions(ralliId: string, viewerId: string | null) {
+  const { data, error } = await requireSupabase().from('ralli_reactions').select('user_id, kind').eq('ralli_id', ralliId)
+  if (error) throw error
+  return {
+    count: data?.length ?? 0,
+    selected: data?.find((reaction) => reaction.user_id === viewerId)?.kind ?? null,
+  }
+}
+
+export async function setRalliReaction(ralliId: string, userId: string, previous: string | null, next: string | null) {
+  const database = requireSupabase()
+  if (previous) {
+    const { error } = await database.from('ralli_reactions').delete().eq('ralli_id', ralliId).eq('user_id', userId).eq('kind', previous)
+    if (error) throw error
+  }
+  if (next) {
+    const { error } = await database.from('ralli_reactions').insert({ ralli_id: ralliId, user_id: userId, kind: next })
+    if (error) throw error
+  }
+}
+
 export async function recordPass(ralliId: string, responseId: string | null, userId: string) {
   void userId
   const { data, error } = await requireSupabase().rpc('create_ralli_invitation', { target_ralli: ralliId, source_response: responseId })

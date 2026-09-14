@@ -48,6 +48,7 @@ type ResponseRow = {
 }
 
 type ReactionRow = { id: string; response_id: string; user_id: string; kind: string; created_at: string }
+type RalliReactionRow = { id: string; ralli_id: string; user_id: string; kind: string; created_at: string }
 type RalliPassRow = { id: string; ralli_id: string; response_id: string | null; passed_by: string; passed_to: string | null; share_code: string; created_at: string }
 type PoolContributionRow = { id: string; ralli_id: string; contributor_id: string; kind: Database['public']['Enums']['contribution_kind']; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
 type ResponseTipRow = { id: string; response_id: string; sender_id: string; recipient_id: string; amount_luna: number; transaction_hash: string | null; status: Database['public']['Enums']['transaction_status']; confirmed_at: string | null; created_at: string }
@@ -131,6 +132,12 @@ export interface Database {
       reactions: {
         Row: ReactionRow
         Insert: Omit<ReactionRow, 'id' | 'created_at'>
+        Update: never
+        Relationships: []
+      }
+      ralli_reactions: {
+        Row: RalliReactionRow
+        Insert: Omit<RalliReactionRow, 'id' | 'created_at'>
         Update: never
         Relationships: []
       }

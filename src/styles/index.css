@@ -617,6 +617,14 @@ img.avatar { object-fit: cover; }
   border-radius: 50%;
   background: #3f9a62;
 }
+.wallet-trigger > span { display: none; }
+.create-wallet-gate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--lime-soft); }
+.create-wallet-gate > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--ink); color: var(--surface); }
+.create-wallet-gate svg { width: 19px; }
+.create-wallet-gate strong, .create-wallet-gate small { display: block; }
+.create-wallet-gate strong { font-size: 12px; }
+.create-wallet-gate small { margin-top: 3px; color: var(--ink-soft); font-size: 10px; line-height: 1.35; }
+.create-wallet-gate button { min-height: 40px; border: 0; border-radius: 11px; padding: 0 12px; background: var(--ink); color: var(--surface); font-size: 11px; font-weight: 800; }
 .wallet-backdrop {
   position: fixed;
   z-index: 80;
@@ -1061,6 +1069,9 @@ img.avatar { object-fit: cover; }
 .profile-list > article:last-child { border-bottom: 0; }
 .profile-list strong, .profile-list small { display: block; }
 .profile-list small { margin-top: 3px; color: var(--ink-soft); font-size: 10px; }
+.profile-list__content { min-width: 0; min-height: 48px; border: 0; display: flex; flex-direction: column; justify-content: center; padding: 0; background: transparent; color: var(--ink); text-align: left; }
+.profile-list__content strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-list__content:disabled { cursor: default; }
 .profile-list button > svg { width: 16px; }
 .trophy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .trophy-grid article { min-height: 180px; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 20px; border-radius: var(--radius-card); background: var(--surface); }
@@ -1269,6 +1280,9 @@ img.avatar { object-fit: cover; }
 .ralli-conversation { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
 .ralli-conversation > div { margin-bottom: 12px; }
 .ralli-conversation > .response-action { min-width: 150px; background: var(--surface); }
+.ralli-primary-actions { position: relative; display: flex; align-items: center; gap: 6px; margin: 16px 0 6px; padding: 7px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.ralli-primary-actions > .response-action { min-width: 96px; }
+.ralli-primary-actions > .response-action:last-child { margin-left: auto; }
 .report-panel { overscroll-behavior: contain; }
 .report-copy { margin: 8px 0 18px; color: var(--ink-soft); line-height: 1.5; }
 .tip-chip { position: relative; display: inline-flex; align-items: stretch; }
@@ -1627,6 +1641,9 @@ img.avatar { object-fit: cover; }
     justify-content: space-between;
   }
   .header-actions { display: flex; gap: 6px; }
+  .header-actions .wallet-trigger { width: auto; grid-auto-flow: column; gap: 6px; padding: 0 11px; }
+  .wallet-trigger > span { display: inline; font-size: 10px; font-weight: 800; }
+  .wallet-trigger.is-connected::after { right: 7px; bottom: 7px; }
   .icon-button {
     position: relative;
     width: 44px;
@@ -1754,6 +1771,8 @@ img.avatar { object-fit: cover; }
   .flow-intro h1 { font-size: clamp(30px, 8vw, 34px); }
   .flow-actions { padding-bottom: env(safe-area-inset-bottom); }
   .flow-actions--static { display: grid; }
+  .create-wallet-gate { grid-template-columns: auto minmax(0, 1fr); }
+  .create-wallet-gate button { grid-column: 1 / -1; width: 100%; }
   .flow-actions--static p { text-align: center; }
   .button--wide { width: 100%; }
   .detail-hero { margin-top: 6px; border-radius: 20px; aspect-ratio: 4 / 3; }
@@ -1771,6 +1790,9 @@ img.avatar { object-fit: cover; }
   .response-post > footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
   .reward-callout { grid-template-columns: 1fr; }
   .response-reactions, .reaction-trigger, .tip-chip { width: 100%; }
+  .ralli-primary-actions { display: grid; grid-template-columns: 1fr 1fr auto; }
+  .ralli-primary-actions .response-reactions, .ralli-primary-actions .reaction-trigger { width: auto; }
+  .ralli-primary-actions > .response-action { min-width: 0; }
   .reaction-trigger, .response-action, .response-post > footer > button { min-width: 0; width: 100%; }
   .tip-chip { grid-column: 1 / -1; }
   .tip-chip__send { flex: 1; }

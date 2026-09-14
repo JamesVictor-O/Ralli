@@ -10,6 +10,7 @@ import { hasResponded } from '../../lib/responses.ts'
 import { useBackend } from '../../store/backend.ts'
 import { PassItOn } from '../chains/PassItOn.tsx'
 import { Comments } from '../responses/Comments.tsx'
+import { RalliReactions } from './RalliReactions.tsx'
 
 function hoursLeft(endsAt?: string) {
   if (!endsAt) return '—'
@@ -71,6 +72,12 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
           <h1 id="ralli-title">{ralli.prompt}</h1>
           {ralli.description && <p className="detail-copy">{ralli.description}</p>}
 
+          <section className="ralli-primary-actions" aria-label="Ralli actions">
+            <RalliReactions ralliId={ralli.id} />
+            <Comments ralliId={ralli.id} expanded={commentsOpen} onToggle={() => setCommentsOpen((value) => !value)} />
+            <button className="response-action" type="button" onClick={() => void navigator.share?.({ title: ralli.prompt, url: `${window.location.origin}${window.location.pathname}?ralli=${ralli.id}` })}><Share2 aria-hidden="true" /><small>Share</small></button>
+          </section>
+
           <div className="detail-stats">
             <span><UsersRound aria-hidden="true" /><strong>{ralli.participants}</strong><small>responses</small></span>
             <span><Heart aria-hidden="true" /><strong>{ralli.reactions}</strong><small>reactions</small></span>
@@ -92,7 +99,6 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
 
           {joined && unlockedResponseId && <section className="reciprocity-unlocked" aria-live="polite"><span><Check aria-hidden="true" /></span><div><p className="eyebrow">You showed up</p><h2>Everyone’s responses are unlocked.</h2><p>See their takes, react, then keep the challenge moving.</p></div><button className="button button--ink" type="button" onClick={() => setPassOpen(true)}>Challenge someone <Repeat2 aria-hidden="true" /></button></section>}
           <ResponseViewer ralliId={ralli.id} prompt={ralli.prompt} locked={!responsesUnlocked} onJoin={onJoin} />
-          <section className="ralli-conversation" aria-labelledby="ralli-conversation-title"><div><p className="eyebrow">Talk about this Ralli</p><h2 id="ralli-conversation-title">Ralli conversation</h2></div><Comments ralliId={ralli.id} expanded={commentsOpen} onToggle={() => setCommentsOpen((value) => !value)} /></section>
         </div>
 
         <footer className="flow-actions">
