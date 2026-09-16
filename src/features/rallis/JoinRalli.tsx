@@ -61,7 +61,7 @@ export function JoinRalli({ ralliId, prompt, onBack, onClose, onSeeResponses, on
     const file = event.target.files?.[0]
     if (!file) return
     try {
-      validateMedia(file, 'response')
+      validateMedia(file)
       if (format === 'photo' && !isImageFile(file)) throw new Error('Choose a photo for this response.')
       if (format === 'video' && !isVideoFile(file)) throw new Error('Choose a video for this response.')
       if (preview) URL.revokeObjectURL(preview)

@@ -420,7 +420,7 @@ img.avatar { object-fit: cover; }
 .button--ink { border-radius: var(--radius-control); padding: 0 16px; background: var(--ink); color: var(--surface); }
 
 .daily-ralli__art { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-.daily-ralli__art img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 180ms ease-out; }
+.daily-ralli__art img, .daily-ralli__art video { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 180ms ease-out; }
 .daily-ralli__art::after { display: none; }
 .shape { position: absolute; display: block; }
 .shape--sun { width: 155px; height: 155px; right: 35px; top: 40px; border-radius: 50%; background: var(--coral); }
@@ -546,7 +546,7 @@ img.avatar { object-fit: cover; }
 .reward-pool__boost { min-height: 42px; border: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 13px; border-radius: 12px; background: var(--ink); color: var(--surface); font-size: 11px; font-weight: 800; }
 .reward-pool__boost svg { width: 14px; fill: var(--lime); color: var(--lime); }
 .dare-card__media { position: relative; overflow: hidden; aspect-ratio: 16 / 9; border-radius: 18px; background: var(--surface-soft); }
-.dare-card__media img { width: 100%; height: 100%; object-fit: cover; }
+.dare-card__media > img, .dare-card__media > video { width: 100%; height: 100%; object-fit: cover; }
 .media-badge {
   position: absolute;
   left: 12px;
@@ -1237,7 +1237,7 @@ img.avatar { object-fit: cover; }
   border-radius: 24px;
   background: var(--surface-soft);
 }
-.detail-hero img { width: 100%; height: 100%; object-fit: cover; }
+.detail-hero > img, .detail-hero > video, .detail-hero > .feed-video { width: 100%; height: 100%; object-fit: cover; }
 .detail-hero .pill { position: absolute; top: 16px; left: 16px; }
 .detail-body { padding: 24px 6px 0; }
 .detail-author { align-items: center; margin-bottom: 22px; }
@@ -1479,7 +1479,7 @@ img.avatar { object-fit: cover; }
 .media-drop small { margin-top: 3px; color: var(--ink-soft); font-size: 11px; }
 .media-drop > span:last-child { font-size: 12px; font-weight: 750; }
 .media-drop.has-preview { grid-template-columns: 58px 1fr auto; }
-.media-drop.has-preview > img { width: 58px; height: 58px; border-radius: 13px; object-fit: cover; }
+.media-drop.has-preview > img, .media-drop.has-preview > video { width: 58px; height: 58px; border-radius: 13px; object-fit: cover; }
 .capture-preview { width: 100%; max-height: 360px; border-radius: 18px; object-fit: cover; background: var(--ink); }
 .response-feed-state { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 28px; color: var(--ink-soft); text-align: center; }
 .response-feed-state > svg { width: 26px; }
@@ -1631,7 +1631,7 @@ img.avatar { object-fit: cover; }
 .community-daily__copy .button { min-height: 48px; flex: 0 0 auto; padding-inline: 18px; white-space: nowrap; }
 .community-daily__copy .text-button { min-height: 44px; white-space: nowrap; }
 .community-daily__media { min-width: 0; min-height: 0; padding: 0; border: 0; background: var(--ink); cursor: pointer; }
-.community-daily__media img { width: 100%; height: 100%; object-fit: cover; transition: transform 180ms ease-out; }
+.community-daily__media img, .community-daily__media video { width: 100%; height: 100%; object-fit: cover; transition: transform 180ms ease-out; }
 .community-create-link { min-height: 42px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); font-weight: 700; cursor: pointer; }
 .community-create-link svg { width: 16px; }
 .community-create-sheet { min-height: 0; max-width: 620px; }
@@ -1648,7 +1648,7 @@ img.avatar { object-fit: cover; }
 .community-ralli-row { position: relative; min-height: 138px; display: grid; grid-template-columns: 154px minmax(0, 1fr) auto; align-items: center; gap: 17px; padding: 12px; border: 1px solid var(--line); border-radius: 21px; background: var(--surface); }
 .community-ralli-row > img, .community-ralli-row > div { position: relative; z-index: 2; pointer-events: none; }
 .community-ralli-row > .community-ralli-row__actions { pointer-events: auto; }
-.community-ralli-row > img { width: 154px; height: 112px; border-radius: 15px; object-fit: cover; }
+.community-ralli-row > img, .community-ralli-row > video { width: 154px; height: 112px; border-radius: 15px; object-fit: cover; }
 .community-ralli-row p { margin: 0 0 3px; color: var(--ink-soft); font-size: 11px; font-weight: 650; }
 .community-ralli-row h3 { margin: 0 0 9px; font-size: 19px; line-height: 1.18; }
 .community-ralli-row > div > span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; color: var(--ink-soft); font-size: 11px; font-weight: 700; }

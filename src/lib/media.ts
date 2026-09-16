@@ -6,7 +6,7 @@ const MAX_VIDEO_BYTES = 50 * 1024 * 1024
 const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const videoTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v', 'video/hevc'])
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp'])
-const videoExtensions = new Set(['mp4', 'webm', 'mov', 'm4v'])
+const videoExtensions = new Set(['mp4', 'webm', 'mov', 'm4v', 'hevc'])
 const COVER_MAX_DIMENSION = 1600
 const COVER_WEBP_QUALITY = 0.82
 const RESPONSE_MAX_DIMENSION = 1440
@@ -38,23 +38,24 @@ function uploadContentType(file: File) {
   if (extension === 'm4v') return 'video/x-m4v'
   if (extension === 'mp4') return 'video/mp4'
   if (extension === 'webm') return 'video/webm'
+  if (extension === 'hevc') return 'video/hevc'
   if (extension === 'png') return 'image/png'
   if (extension === 'webp') return 'image/webp'
   if (file.type) return file.type.toLowerCase()
   return 'image/jpeg'
 }
 
-export function validateMedia(file: File, kind: 'cover' | 'response') {
+export function validateMedia(file: File) {
   const image = isImageFile(file)
   const video = isVideoFile(file)
   if (!image && !video) throw new Error('Choose a JPG, PNG, WebP, MP4, MOV, M4V, or WebM file.')
   const limit = video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
   if (file.size > limit) throw new Error(`That ${video ? 'video' : 'image'} is too large. ${video ? 'Choose one under 50 MB.' : 'Choose one under 10 MB.'}`)
-  if (kind === 'cover' && video) throw new Error('Ralli covers currently support photos only.')
 }
 
 export async function optimizeCoverImage(file: File) {
-  validateMedia(file, 'cover')
+  validateMedia(file)
+  if (isVideoFile(file)) return file
   if (file.type === 'image/webp' && file.size <= 1_500_000) return file
 
   const bitmap = await createImageBitmap(file)
@@ -78,7 +79,7 @@ export async function optimizeCoverImage(file: File) {
 }
 
 export async function optimizeResponseImage(file: File) {
-  validateMedia(file, 'response')
+  validateMedia(file)
   if (!isImageFile(file)) return file
   if (file.type === 'image/webp' && file.size <= 1_250_000) return file
 
@@ -243,7 +244,7 @@ async function uploadVideoResumably(path: string, file: File, onProgress?: (perc
 }
 
 export async function uploadRalliMedia(userId: string, folder: 'covers' | 'responses', file: File, onProgress?: (percentage: number) => void) {
-  validateMedia(file, folder === 'covers' ? 'cover' : 'response')
+  validateMedia(file)
   const extension = fileExtension(file) || (isVideoFile(file) ? 'mp4' : 'jpg')
   const path = `${userId}/${folder}/${createId()}.${extension}`
   if (isVideoFile(file) && file.size > 6 * 1024 * 1024) {

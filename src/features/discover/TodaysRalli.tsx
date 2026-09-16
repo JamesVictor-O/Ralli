@@ -2,6 +2,7 @@ import { type KeyboardEvent, type MouseEvent, useEffect } from 'react'
 import { ChevronRight, UsersRound } from 'lucide-react'
 import { useTodaysRalli } from '../../hooks/useTodaysRalli.ts'
 import type { Dare } from './DareCard.tsx'
+import { RalliCover } from '../../components/media/RalliCover.tsx'
 
 interface TodaysRalliProps {
   onJoin: (ralli: Dare) => void
@@ -65,7 +66,7 @@ export function TodaysRalli({ onJoin, onOpen, refreshKey = 0, onLoaded }: Todays
         </div>
       </div>
       <div className="daily-ralli__art" aria-hidden="true">
-        <img src={ralli.image} alt="" width="400" height="310" fetchPriority="high" decoding="async" />
+        <RalliCover src={ralli.image} alt={ralli.imageAlt} type={ralli.mediaType} eager decorative />
       </div>
     </article>
   )

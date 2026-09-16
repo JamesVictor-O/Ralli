@@ -6,6 +6,7 @@ import { fetchCommunityDetail, setCommunityMembership, type CommunityDetailData 
 import { useBackend } from '../../store/backend.ts'
 import { actionableError } from '../../lib/errors.ts'
 import { trackProductEvent } from '../../lib/analytics.ts'
+import { RalliCover } from '../../components/media/RalliCover.tsx'
 
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
@@ -91,7 +92,7 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
                 <button className="text-button" type="button" onClick={() => onOpenRalli(daily)}>See responses <ArrowRight aria-hidden="true" /></button></div>
             </div>
             <button className="community-daily__media" type="button" onClick={() => onOpenRalli(daily)} aria-label={`Open ${daily.prompt}`}>
-              <img src={daily.image} alt={daily.imageAlt} width="720" height="520" decoding="async" />
+              <RalliCover src={daily.image} alt={daily.imageAlt} type={daily.mediaType} eager decorative />
             </button>
           </article>
         ) : (
@@ -104,7 +105,7 @@ export function CommunityDetail({ slug, onBack, onOpenRalli, onJoinRalli, onBoos
         {happening.length ? <div className="community-ralli-list">{happening.map((ralli) => (
           <article className="community-ralli-row" key={ralli.id}>
             <button className="community-ralli-row__hit" type="button" aria-label={`Open Ralli: ${ralli.prompt}`} onClick={() => onOpenRalli(ralli)} />
-            <img src={ralli.image} alt="" width="160" height="120" loading="lazy" decoding="async" />
+            <RalliCover src={ralli.image} alt={ralli.imageAlt} type={ralli.mediaType} decorative />
             <div><p>{ralli.author} started this</p><h3>{ralli.prompt}</h3><span><UsersRound aria-hidden="true" /> {compact.format(ralli.participants)} responses</span>{ralli.boosts > 0 && <span className="community-nim"><Coins aria-hidden="true" /> {ralli.boosts} NIM boosted</span>}</div>
             <div className="community-ralli-row__actions"><button className="community-boost" type="button" onClick={(event) => { event.stopPropagation(); onBoost(ralli) }}><Zap aria-hidden="true" /> Boost</button><button className="join-button" type="button" onClick={(event) => { event.stopPropagation(); onJoinRalli(ralli) }}>Join <ArrowRight aria-hidden="true" /></button></div>
           </article>

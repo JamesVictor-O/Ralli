@@ -1,9 +1,9 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, UsersRound, WalletCards, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock3, Globe2, Image, LoaderCircle, UsersRound, Video, WalletCards, X } from 'lucide-react'
 import { useBackend } from '../../store/backend.ts'
 import { useWallet } from '../../store/wallet.ts'
 import { createRalli, ensureWalletAttached } from '../../lib/social.ts'
-import { optimizeCoverImage, validateMedia } from '../../lib/media.ts'
+import { isVideoFile, optimizeCoverImage, validateMedia } from '../../lib/media.ts'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock.ts'
 import { actionableError } from '../../lib/errors.ts'
 
@@ -23,6 +23,7 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
   const [coverPreparing, setCoverPreparing] = useState(false)
   const [coverSavings, setCoverSavings] = useState('')
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [duration, setDuration] = useState('24')
   const [submitting, setSubmitting] = useState(false)
   const [publishStage, setPublishStage] = useState<'wallet' | 'prepare' | 'cover' | 'publish'>('wallet')
@@ -53,7 +54,7 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
     const file = event.target.files?.[0]
     if (!file) return
     try {
-      validateMedia(file, 'cover')
+      validateMedia(file)
       const selection = coverSelectionRef.current + 1
       coverSelectionRef.current = selection
       if (coverPreview) URL.revokeObjectURL(coverPreview)
@@ -61,9 +62,11 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
       setCoverName(file.name)
       setCoverPreview(URL.createObjectURL(file))
       setCoverSavings('')
-      setCoverPreparing(true)
+      setUploadProgress(0)
+      const video = isVideoFile(file)
+      setCoverPreparing(!video)
       setError('')
-      const optimization = optimizeCoverImage(file)
+      const optimization = video ? Promise.resolve(file) : optimizeCoverImage(file)
       coverOptimizationRef.current = optimization
       void optimization.then((optimized) => {
         if (coverSelectionRef.current !== selection) return
@@ -111,6 +114,7 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
         communityId: community?.id,
         cover: preparedCover,
         onStage: setPublishStage,
+        onUploadProgress: setUploadProgress,
       })
       setCreatedId(id)
       onCreated?.(id)
@@ -195,11 +199,11 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
             </div>
           </div>
 
-          <input className="sr-only" ref={coverRef} id="ralli-cover" type="file" accept="image/jpeg,image/png,image/webp"
+          <input className="sr-only" ref={coverRef} id="ralli-cover" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-m4v,video/hevc,.mov,.m4v,.hevc"
             onChange={chooseCover} />
           <button className={`media-drop ${coverPreview ? 'has-preview' : ''}`} type="button" onClick={() => coverRef.current?.click()}>
-            {coverPreview ? <img src={coverPreview} alt="Selected Ralli cover preview" /> : <span><Image aria-hidden="true" /></span>}
-            <div><strong>{coverName || 'Add a cover'}</strong><small>{coverPreparing ? 'Preparing a faster upload…' : coverSavings || 'JPG, PNG or WebP · Up to 10 MB'}</small></div>
+            {coverPreview ? (cover && isVideoFile(cover) ? <video src={coverPreview} muted playsInline preload="metadata" aria-label="Selected Ralli video preview" /> : <img src={coverPreview} alt="Selected Ralli cover preview" />) : <span>{cover && isVideoFile(cover) ? <Video aria-hidden="true" /> : <Image aria-hidden="true" />}</span>}
+            <div><strong>{coverName || 'Add photo or video'}</strong><small>{coverPreparing ? 'Preparing a faster upload…' : coverSavings || 'Photos up to 10 MB · Videos up to 50 MB'}</small></div>
             <span>{cover ? 'Change' : 'Choose'}</span>
           </button>
 
@@ -239,7 +243,7 @@ export function CreateRalli({ onClose, onCreated, onOpenCreated, onOpenWallet, c
             {backendStatus === 'error' && <button className="text-button" type="button" onClick={() => void retryBackend()}>Retry Supabase connection</button>}
             <button className="button button--ink button--wide" type={account ? 'submit' : 'button'} disabled={submitting} aria-busy={submitting} onClick={account ? undefined : onOpenWallet}>
               {submitting && <LoaderCircle className="spin" aria-hidden="true" />}
-              {submitting ? publishStage === 'wallet' ? 'Checking wallet…' : publishStage === 'prepare' ? 'Optimizing cover…' : publishStage === 'cover' ? 'Uploading cover…' : 'Publishing Ralli…' : account ? 'Start this Ralli' : 'Connect Nimiq to continue'}
+              {submitting ? publishStage === 'wallet' ? 'Checking wallet…' : publishStage === 'prepare' ? 'Optimizing cover…' : publishStage === 'cover' ? uploadProgress ? `Uploading media · ${uploadProgress}%` : 'Uploading media…' : 'Publishing Ralli…' : account ? 'Start this Ralli' : 'Connect Nimiq to continue'}
             </button>
           </footer>
         </form>

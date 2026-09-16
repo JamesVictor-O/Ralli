@@ -12,6 +12,7 @@ export interface CreateRalliInput {
   communityId?: string | null
   cover?: File | null
   onStage?: (stage: 'wallet' | 'cover' | 'publish') => void
+  onUploadProgress?: (percentage: number) => void
 }
 
 export async function createRalli(input: CreateRalliInput) {
@@ -20,7 +21,7 @@ export async function createRalli(input: CreateRalliInput) {
   if (input.cover) {
     input.onStage?.('cover')
     try {
-      coverPath = await uploadRalliMedia(input.userId, 'covers', input.cover)
+      coverPath = await uploadRalliMedia(input.userId, 'covers', input.cover, input.onUploadProgress)
     } catch (error) {
       throw new Error(friendlyNetworkError(error, 'uploading the cover'), { cause: error })
     }

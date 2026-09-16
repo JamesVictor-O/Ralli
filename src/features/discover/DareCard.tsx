@@ -1,11 +1,13 @@
 import { type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, Coins, Heart, UsersRound } from 'lucide-react'
 import { Avatar } from '../../components/ui/Avatar.tsx'
+import { RalliCover } from '../../components/media/RalliCover.tsx'
 import { useBackend } from '../../store/backend.ts'
 
 export interface Dare {
   id: string; author: string; initials: string; authorAvatarUrl: string | null; time: string; prompt: string; category: string
   participants: number; reactions: number; passes: number; reward: number; starterReward: number; boosts: number; boostCount: number; image: string; imageAlt: string
+  mediaType: 'image' | 'video'
   tone: 'coral' | 'violet'
   description?: string; endsAt?: string; creatorId?: string
   viewerResponded?: boolean
@@ -44,7 +46,7 @@ export function DareCard({ dare, onOpen, onJoin, onBoost }: { dare: Dare; onOpen
       </div>
       <h3 className="dare-card__title">{dare.prompt}</h3>
       <div className="dare-card__media">
-        <img src={dare.image} alt={dare.imageAlt} width="720" height="520" loading="lazy" decoding="async" />
+        <RalliCover src={dare.image} alt={dare.imageAlt} type={dare.mediaType} interactive={dare.mediaType === 'video'} />
         <div className="media-badge"><UsersRound aria-hidden="true" /><span><strong>{dare.participants}</strong> responses</span></div>
       </div>
       <div className="dare-card__meta">

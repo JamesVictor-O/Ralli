@@ -11,6 +11,7 @@ import { useBackend } from '../../store/backend.ts'
 import { PassItOn } from '../chains/PassItOn.tsx'
 import { Comments } from '../responses/Comments.tsx'
 import { RalliReactions } from './RalliReactions.tsx'
+import { RalliCover } from '../../components/media/RalliCover.tsx'
 
 function hoursLeft(endsAt?: string) {
   if (!endsAt) return '—'
@@ -59,7 +60,7 @@ export function RalliDetail({ ralli, unlockedResponseId, onClose, onJoin }: { ra
         </header>
 
         <div className="detail-hero">
-          <img src={ralli.image} alt={ralli.imageAlt} width="900" height="650" fetchPriority="high" decoding="async" />
+          <RalliCover src={ralli.image} alt={ralli.imageAlt} type={ralli.mediaType} interactive={ralli.mediaType === 'video'} eager />
           <span className="pill pill--dark">{ralli.category}</span>
         </div>
 

@@ -29,6 +29,10 @@ function mediaUrl(path: string | null, index: number) {
   return requireSupabase().storage.from('ralli-media').getPublicUrl(path).data.publicUrl
 }
 
+function mediaType(path: string | null): 'image' | 'video' {
+  return path && /\.(?:mp4|webm|mov|m4v|hevc)(?:$|[?#])/i.test(path) ? 'video' : 'image'
+}
+
 function toNim(luna: number | null) {
   return Math.max(0, Number(luna ?? 0) / LUNA_PER_NIM)
 }
@@ -55,6 +59,7 @@ export function mapFeedRow(row: RalliFeedRow, index = 0): Dare {
     boostCount: row.boost_count ?? 0,
     image: mediaUrl(row.cover_path, index),
     imageAlt: row.prompt ? `Cover for ${row.prompt}` : 'Ralli cover',
+    mediaType: mediaType(row.cover_path),
     tone: index % 2 === 0 ? 'coral' : 'violet',
     description: row.description || '',
     endsAt: row.ends_at || undefined,
