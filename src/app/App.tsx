@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  Bell, ChevronRight, HandCoins, Home, LoaderCircle, Plus, Search, UsersRound,
+  Bell, ChevronRight, HandCoins, Home, Plus, Search, UsersRound,
   Sparkles, UserRound, WalletCards, WifiOff, Zap,
 } from 'lucide-react'
 import { DareFeed } from '../features/discover/DareFeed.tsx'
@@ -21,6 +21,7 @@ import { trackProductEvent } from '../lib/analytics.ts'
 import { actionableError } from '../lib/errors.ts'
 import { readBrowserStorage, writeBrowserStorage } from '../lib/browserStorage.ts'
 import { MemberSocialProof } from '../components/ui/MemberSocialProof.tsx'
+import { WalletLogin } from '../components/navigation/WalletLogin.tsx'
 import '../styles/index.css'
 
 const Activity = lazy(() => import('../features/activity/Activity.tsx').then((module) => ({ default: module.Activity })))
@@ -62,6 +63,7 @@ export default function App() {
   const [inviteToken, setInviteToken] = useState<string | null>(null)
   const [communitySlug, setCommunitySlug] = useState<string | null>(() => new URLSearchParams(window.location.search).get('community'))
   const [createCommunity, setCreateCommunity] = useState<{ id: string; name: string; icon: string } | null>(null)
+  const [verifiedWalletAccount, setVerifiedWalletAccount] = useState<string | null>(null)
   const { status: walletStatus, account } = useWallet()
   const { user, status: backendStatus, error: backendError, retry: retryBackend } = useBackend()
   const { summary: myProfile, refresh: refreshMyProfile } = useMyProfileSummary(user)
@@ -72,6 +74,8 @@ export default function App() {
     writeBrowserStorage('session', 'ralli-splash-seen', 'true')
     setShowSplash(false)
   }, [])
+  const finishWalletLogin = useCallback(() => setVerifiedWalletAccount(account), [account])
+  const walletIdentityReady = walletStatus === 'connected' && Boolean(account) && verifiedWalletAccount === account
   const today = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())
 
   useEffect(() => {
@@ -171,10 +175,10 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0, 0, 0.2, 1] }}
         >
-    {backendStatus === 'initializing' ? (
-      <main className="startup-state" role="status" aria-live="polite"><LoaderCircle className="spin" aria-hidden="true" /><h1>Getting today’s Rallis ready…</h1><p>Your feed will appear in a moment.</p></main>
-    ) : backendStatus === 'error' ? (
+    {backendStatus === 'error' ? (
       <main className="startup-state" role="alert"><span className="startup-state__icon"><WifiOff aria-hidden="true" /></span><h1>Ralli couldn’t start</h1><p>{actionableError(backendError, 'Ralli could not start its data session. Check your connection and try again.')}</p><button className="button button--ink" type="button" onClick={() => void retryBackend()}>Try again</button></main>
+    ) : backendStatus === 'initializing' || (backendStatus === 'ready' && user && !walletIdentityReady) ? (
+      <WalletLogin onVerified={finishWalletLogin} />
     ) : <div className={`app-shell ${activeNav !== 'Discover' ? 'app-shell--focus' : ''}`}>
       <aside className="side-nav" aria-label="Primary navigation">
         <a className="brand" href="/" aria-label="Ralli home">
