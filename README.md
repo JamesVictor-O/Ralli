@@ -1,413 +1,250 @@
-# Ralli
+<div align="center">
+  <img src="public/railIcon.png" alt="Ralli logo" width="96" height="96" />
+  <h1>Ralli</h1>
+  <p><strong>Start it. Join it. Pass it on.</strong></p>
+  <p>A social challenge network inside Nimiq Pay.</p>
 
-> **Start it. Join it. Pass it on.**
+  [Open Ralli](https://ralli-mu.vercel.app/) · [View the repository](https://github.com/JamesVictor-O/Ralli) · [Nimiq Mini Apps Competition](https://miniappscompetition.com/)
+</div>
 
-Ralli is a social challenge network built inside Nimiq Pay where people create challenges, respond to them, pass them to friends, and reward the moments worth seeing.
+## What Ralli does
 
-Instead of opening another social app just to scroll, Ralli gives you something to **do**.
+Ralli turns social posts into invitations to participate. People start challenges, respond with photos or videos, react and comment, pass challenges to friends, and use NIM to reward contributions.
 
-Someone starts a Ralli. You join it. You post your response. Someone else sees it and joins too. And the Ralli keeps moving.
-
-## What is Ralli?
-
-Ralli turns social challenges into shared, participatory experiences. A Ralli can be almost anything:
-
-> **Show us the weirdest thing on your desk.**
->
-> **Take a picture of the sky where you are right now.**
->
-> **Draw the Nimiq logo from memory in 30 seconds.**
->
-> **Show us breakfast where you live.**
->
-> **Recreate this picture with your friends.**
-
-People can watch responses, join a challenge, react to submissions, pass the Ralli to friends, or use NIM to reward the people and challenges they enjoy.
-
-The result is a social experience built around **participation instead of passive consumption**.
-
-## Why Ralli?
-
-Most social platforms are built around the same loop:
-
-**Post → Scroll → Like → Scroll again.**
-
-Challenges behave differently. They invite people to participate. A funny response makes someone else want to try. A friend challenges another friend. One response becomes ten; ten become a hundred.
+The core loop is:
 
 ```text
-Discover → Watch → Join → Respond → Pass it on → Someone else joins
+Discover → Join → Respond → See everyone’s take → Pass it on
 ```
 
-The challenge starts the experience. The responses become the entertainment.
+Ralli is not a task marketplace or a passive content feed. Each post gives someone else a concrete reason to create something.
 
-## The Ralli experience
+## Why Ralli is different
 
-### Discover
+Ralli connects four retention loops in one social experience:
 
-Open Ralli and immediately discover challenges happening across the community. No complicated dashboard, marketplace, or list of jobs—just things people are doing right now.
+- **Daily Rallis**: a recurring reason to participate
+- **Ralli Chains**: trackable friend-to-friend challenges
+- **Communities**: shared-interest spaces where members show up together
+- **People**: familiar participants, reactions, comments, and activity
 
-### Join a Ralli
+Responding unlocks the social payoff. After someone posts their take, they can see other responses, compare interpretations, react, comment, tip, and challenge the next person.
 
-See something interesting? Join it. Capture your response with a photo, video, text, or another supported format and become part of the Ralli.
+## Current features
 
-### Watch responses
+### Create and participate
 
-Every Ralli becomes its own stream of responses. See how other people interpreted the same challenge, react to your favourites, discover interesting people, and try the challenges you love.
+- Create public or invite-only Rallis
+- Attach photo or video covers
+- Respond with text, photos, or video
+- Upload iPhone video formats, including MOV and M4V
+- View optimized media with viewport-aware video playback
+- See responses after participating or when hosting the Ralli
 
-### Pass it on
+### Social layer
 
-After completing a Ralli, challenge someone else:
+- React to Rallis and individual responses
+- Comment on Rallis and responses
+- Generate trackable **Pass It On** invitations
+- Track opened, accepted, and responded invitation states
+- Build and explore Ralli Chains
+- Receive real-time activity notifications
+- View participation streaks and profile statistics
 
-```text
-Victor → Sarah → James → Ada → Michael
-```
+### Communities
 
-What started with one person can spread through an entire community. Ralli tracks that journey through **Ralli Chains**.
+- Discover and search interest-based communities
+- Create and join communities
+- Start a Ralli inside a community
+- Participate in community Daily Rallis
+- Explore active Rallis, chains, responses, members, and accountability signals
 
-### Daily Ralli
+### NIM economy
 
-Every day, the entire community gets a shared challenge:
+- Boost a Ralli by sending NIM to its verified creator
+- Tip a response by sending NIM to its verified author
+- Tip the creator of an original Ralli
+- Track pending, confirmed, cancelled, and failed payment states
+- Show payment activity to both sender and recipient
 
-> **Today's Ralli**  
-> Take the most dramatic picture possible of something completely ordinary.
+Ralli does not custody user funds. Boosts and tips go directly between verified Nimiq addresses.
 
-Everyone gets the same prompt. Everyone responds differently. Tomorrow, something new is waiting.
+## Nimiq Pay integration
 
-Daily Ralli gives the community a shared ritual and a reason to return.
+Ralli runs as a [Nimiq Pay Mini App](https://www.nimiq.dev/mini-apps). The wallet integration supports:
 
-### Community Rallis
+- Nimiq account selection
+- Signed-message address verification
+- Wallet-based Ralli identity
+- Native NIM payment approval
+- Transaction submission and confirmation tracking
+- Nimiq Hub fallback when Ralli runs in a regular browser
 
-Some challenges are bigger than one person:
+Nimiq Pay handles private keys and approval dialogs. Ralli never receives or stores a private key.
 
-> **100 Cities in 24 Hours 🌍**  
-> Show us something unique about your city.  
-> **73 / 100 cities reached**
-
-One person cannot complete it—the community has to. Community Rallis turn individual participation into collective experiences.
-
-## NIM on Ralli
-
-Ralli is not built around earning cryptocurrency. It is built around people. Anyone can discover, participate, create, react, and share without needing a financial incentive.
-
-Our principle is simple:
-
-> **NIM amplifies the experience. It does not gate it.**
-
-### Reward
-
-A creator can attach NIM to a Ralli:
-
-> **Show us the best view from your city.**  
-> Reward: **20 NIM**
-
-The reward gives the challenge real economic weight without turning the product into a task marketplace.
-
-### Boost
-
-Sometimes you do not want to complete a Ralli—you just really want to see someone else do it. That is where Boost comes in.
-
-A Ralli might start with **5 NIM**. People discover it and add **1 NIM**, **2 NIM**, **5 NIM**, or **10 NIM**. The reward grows because the community wants to see it happen.
-
-A Boost is more than money. It is the audience saying: **we want to see this.**
-
-### Tip
-
-Sometimes the reward comes after the response. Someone makes you laugh, creates something incredible, or shows you something you have never seen before.
-
-Tap **Tip** and send them NIM directly:
-
-> That was hilarious 😂  
-> **Tip 1 NIM**
-
-No points pretending to be money—real value moving directly between people.
-
-## More than money
-
-Money alone does not create a healthy social product. Ralli rewards participation in different ways.
-
-### Reactions
-
-- 😂 Funny
-- 🔥 Nailed It
-- 🤯 WTF
-- 👏 Respect
-
-### Reputation
-
-A profile shows the impact a person's participation has had on the community:
-
-- Rallis joined and started
-- Reactions received
-- Longest Ralli Chain
-- Community achievements
-- Participation streaks
-- NIM earned
-- People reached
-
-### Achievements
-
-- **Around the World** — Participate in a Ralli with people from multiple countries.
-- **Chain Starter** — Start a Ralli Chain that reaches 10 people.
-- **Crowd Favourite** — Reach a major reaction milestone on a response.
-- **On Fire** — Maintain a participation streak.
-
-These achievements are part of the social experience and do not need to live on-chain.
-
-## How Ralli works
-
-```text
-                     START
-                       │
-                       ▼
-                ┌─────────────┐
-                │   A Ralli   │
-                └──────┬──────┘
-                       │
-             ┌─────────┴─────────┐
-             ▼                   ▼
-          WATCH                 JOIN
-             │                   │
-             ▼                   ▼
-         RESPONSES          CREATE RESPONSE
-             │                   │
-             │                   ▼
-             │              PASS IT ON
-             │                   │
-             └──────────┬────────┘
-                        ▼
-                   MORE PEOPLE
-                        │
-                        ▼
-                 RALLI CONTINUES
-```
-
-NIM enters the loop naturally through **Reward → Boost → Tip**. The social experience comes first; the economic layer makes it stronger.
-
-## Why Nimiq?
-
-Ralli is designed as a Nimiq Mini App running directly inside Nimiq Pay. That gives it something a traditional social challenge app does not have: **native peer-to-peer value**.
-
-A user can move from watching, to participating, to rewarding someone without leaving the experience to open another payment application. Nimiq Pay provides wallet access and native transaction approval while Ralli focuses on the social experience.
-
-```text
-                 NIMIQ PAY
-                     │
-                     ▼
-                ┌─────────┐
-                │  RALLI  │
-                └────┬────┘
-                     │
-        ┌────────────┼────────────┐
-        │            │            │
-        ▼            ▼            ▼
-      Social       Identity     Payments
-        │            │            │
-     Rallis        Nimiq       Reward
-    Responses      Wallet       Boost
-    Reactions                   Tip
-     Chains
-```
-
-Users remain in control of their wallets. Wallet-sensitive actions are handled through Nimiq Pay and require explicit user approval.
-
-## Product principles
-
-### Entertainment first
-
-Ralli should still be enjoyable if every monetary reward disappeared tomorrow. If it is only fun when someone is paying, we have built a bounty platform—not Ralli.
-
-### Participation over consumption
-
-Watching matters, but every experience should gently encourage: **“I want to try this.”**
-
-### Social by design
-
-Sharing is not an acquisition feature added later. Passing a Ralli is part of the product itself.
-
-### Money with meaning
-
-NIM should represent real intent: **I want this to happen. I enjoyed this. You deserve this.** It should not encourage meaningless token farming.
-
-### Simple enough to explain in seconds
-
-A new user should not need to understand wallets, blockchains, smart contracts, or tokenomics before enjoying Ralli.
-
-## Core product
-
-The initial version of Ralli focuses on five surfaces:
-
-| Surface | Purpose |
-| --- | --- |
-| **Discover** | A mobile-first feed for active and trending Rallis. |
-| **Ralli** | The challenge, context, reward, participants, responses, and actions. |
-| **Create** | Start a Ralli, define participation, set its duration, and optionally attach a NIM reward. |
-| **Activity** | Reactions, invitations, chain activity, rewards, tips, and community events. |
-| **Me** | Your responses, achievements, streaks, chains, reactions, and NIM activity. |
-
-## MVP scope
-
-For the Nimiq Mini Apps Competition, the goal is not to build every possible social feature. The goal is to make the core Ralli loop feel great.
-
-### Core
-
-- Discover feed
-- Create and join a Ralli
-- Photo and text responses
-- Response feed and reactions
-- Daily Ralli
-- User profiles
-
-### Social
-
-- Pass It On
-- Ralli Chains
-- Shareable Ralli links
-- Community Rallis
-- Activity feed
-- Basic streaks and achievements
-
-### Nimiq
-
-- Nimiq Pay integration
-- Nimiq account identity
-- NIM rewards and Boosts
-- Peer-to-peer NIM tips
-- Transaction states and confirmations
-
-## What Ralli is not
-
-Ralli is not:
-
-- A freelance marketplace
-- A list of paid microtasks
-- A crypto faucet
-- A gambling product
-- A token-farming game
-- Another social network where the only thing to do is scroll
-
-Ralli is built around a simple idea: **give people something worth participating in.**
-
-## Technology
-
-Ralli is currently built with:
-
-- React
-- TypeScript
-- Vite
-- Framer Motion
-- Zustand
-- Nimiq Mini App SDK
-
-The planned application stack also includes Tailwind CSS and Supabase as those integrations are introduced.
+The login flow connects an address, requests a verification signature, and resumes automatically after wallet redirects. Signing the login challenge does not transfer NIM.
 
 ## Architecture
 
 ```text
-┌──────────────────────────────────────────────┐
-│                  NIMIQ PAY                   │
-│                                              │
-│  ┌────────────────────────────────────────┐  │
-│  │                 RALLI                  │  │
-│  │                                        │  │
-│  │  Discover  Rallis  Responses  Profile │  │
-│  └────────────────────┬───────────────────┘  │
-│                       │                      │
-│              Nimiq Mini App SDK              │
-│                       │                      │
-│             Wallet / Transactions            │
-└───────────────────────┼──────────────────────┘
-                        │
-                ┌───────▼────────┐
-                │    Backend     │
-                │                │
-                │ Users          │
-                │ Rallis         │
-                │ Responses      │
-                │ Reactions      │
-                │ Chains         │
-                │ Media          │
-                │ Activity       │
-                └────────────────┘
+┌─────────────────────────────────────────────────┐
+│                    Nimiq Pay                    │
+│  Account access · Signatures · NIM transactions │
+└───────────────────────┬─────────────────────────┘
+                        │ Mini App SDK
+┌───────────────────────▼─────────────────────────┐
+│                    Ralli web app                │
+│  Discover · Communities · Rallis · Chains · Me │
+└───────────────────────┬─────────────────────────┘
+                        │ Supabase client
+┌───────────────────────▼─────────────────────────┐
+│                     Supabase                    │
+│ Auth · Postgres · Storage · Realtime · Functions│
+└─────────────────────────────────────────────────┘
 ```
 
-## Local development
+Wallet-sensitive operations use Nimiq Pay or Nimiq Hub. Supabase stores social data, public profiles, media paths, invitations, activity, and payment records.
 
-### Prerequisites
+## Technology
+
+| Area | Technology |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite |
+| Motion and icons | Framer Motion, Lucide React |
+| Wallet | Nimiq Mini App SDK, Nimiq Core, Nimiq Hub API |
+| Backend | Supabase Auth, Postgres, Realtime, Storage, Edge Functions |
+| Media | TUS resumable uploads, browser image optimization |
+| Hosting | Vercel |
+
+## Run Ralli locally
+
+You need:
 
 - Node.js 22 or later
 - npm
-- Nimiq Pay on a phone or emulator for wallet testing
+- A Supabase project
+- Nimiq Pay on a phone or emulator for embedded wallet testing
 
-### Setup
+Install the project:
 
 ```bash
+git clone https://github.com/JamesVictor-O/Ralli.git
+cd Ralli
 npm install
 cp .env.example .env.local
+```
+
+Add your public Supabase configuration to `.env.local`:
+
+```dotenv
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key_here
+VITE_NIMIQ_HUB_URL=https://hub.nimiq.com
+```
+
+Never add a Supabase service-role key, wallet private key, or other secret to a `VITE_` variable. Vite exposes these variables to the browser.
+
+Start the development server:
+
+```bash
 npm run dev
 ```
 
-Vite serves Ralli on port `5173` and exposes it to the local network. To test inside Nimiq Pay:
+Vite exposes the server to your local network on port `5173`. To test inside Nimiq Pay:
 
-1. Put the development machine and phone on the same Wi-Fi network.
-2. Copy the **Network** URL printed by Vite—not the localhost URL.
-3. Open **Mini Apps** in Nimiq Pay.
-4. Load the Network URL.
+1. Connect your phone and development machine to the same Wi-Fi network
+2. Copy the **Network** URL from the Vite output
+3. Open **Mini Apps** in Nimiq Pay
+4. Load the Network URL
 
-For payment development, use Nimiq testnet before testing with real funds.
+Use the Nimiq testnet before testing payment flows with real funds.
 
-### Scripts
+## Configure Supabase
 
-```bash
-npm run dev      # Start the development server
-npm run build    # Type-check and build for production
-npm run lint     # Run ESLint
-npm run preview  # Preview the production build
-```
+The `supabase` directory contains versioned migrations and Edge Functions. The full backend guide is in [`supabase/README.md`](supabase/README.md).
 
-### Retention analytics
+For a new project:
 
-Ralli records a small, first-party Supabase event funnel for product decisions. Events include the action, session, source, and related Ralli, response, or community IDs. They never include captions, media, wallet addresses, or invitation tokens.
-
-Apply the latest migration before testing analytics:
+1. Create a Supabase project
+2. Enable **Anonymous Sign-Ins** in the Authentication settings
+3. Authenticate and link the Supabase command-line interface (CLI)
+4. Apply the migrations
+5. Deploy the Edge Functions
 
 ```bash
+npx supabase login
+npx supabase link --project-ref your_project_ref_here
 npx supabase db push
+npx supabase functions deploy wallet-challenge
+npx supabase functions deploy wallet-verify
+npx supabase functions deploy payment-submission
 ```
 
-In the Supabase SQL Editor, inspect the private aggregate views:
+Set `RALLI_ALLOWED_ORIGINS` as a Supabase Edge Function secret for production. Include the deployed Vercel origin and any approved Nimiq Pay origin.
 
-```sql
-select * from public.product_funnel_30d;
-select * from public.product_funnel_daily order by event_date desc, event_name;
+## Available scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Type-check and create a production build |
+| `npm run lint` | Run ESLint |
+| `npm run preview` | Preview the production build locally |
+
+Run both production checks before opening a pull request:
+
+```bash
+npm run lint
+npm run build
 ```
 
-These views are restricted from browser clients and remain available to the project owner and service role.
+## Project structure
 
-## Deploying to Vercel
+```text
+ralli/
+├── api/                    # Vercel server functions
+├── public/                 # Icons, manifest, and static assets
+├── src/
+│   ├── app/                # Providers and application setup
+│   ├── components/         # Shared navigation, media, and UI
+│   ├── features/           # Product features grouped by domain
+│   ├── hooks/              # Data and interaction hooks
+│   ├── lib/                # Supabase, media, social, and payment logic
+│   ├── nimiq/              # Wallet, signing, and transaction integration
+│   ├── store/              # Shared application contexts
+│   ├── styles/             # Global responsive styles
+│   └── types/              # Application and database types
+└── supabase/
+    ├── functions/          # Wallet and payment Edge Functions
+    └── migrations/         # Versioned database schema
+```
 
-Ralli includes a Vercel configuration for its Vite production build.
+## Security and privacy
 
-1. Import the repository into Vercel.
-2. Keep the detected framework as **Vite**.
-3. Boosts and tips are sent directly to verified Nimiq addresses; Ralli does not require a custody address.
-4. Ralli automatically uses the injected Mini App SDK inside Nimiq Pay and Nimiq Hub in a regular browser. Set `VITE_NIMIQ_HUB_URL=https://hub.nimiq-testnet.com` for testnet browser testing; omit it or use `https://hub.nimiq.com` for mainnet.
-5. Add the other values from `.env.example` when their corresponding integrations are enabled.
-6. Deploy.
+- Wallet keys remain inside Nimiq Pay or Nimiq Hub
+- Every signature and payment requires wallet approval
+- Verification challenges expire after five minutes and can only be used once
+- The server derives the claimed Nimiq address from the signed proof
+- Row Level Security (RLS) protects user-owned Supabase data
+- Financial records can only be written by trusted Edge Functions
+- Product analytics exclude captions, media, wallet addresses, and invitation tokens
+- Content controls include response deletion, reporting, and user blocking
 
-The production build uses Node.js 22 or later and outputs to `dist`.
+If you discover a security issue, do not publish wallet details, credentials, or an exploit in a public issue. Contact the repository owner privately through the GitHub profile.
 
-## The bigger vision
+## Deploy to Vercel
 
-Ralli starts with simple social challenges, but the underlying idea is larger: what happens when social participation and peer-to-peer value exist in the same experience?
+1. Import this repository into Vercel
+2. Select the **Vite** framework preset
+3. Add the variables from `.env.example`
+4. Run the production deployment
 
-A friend can start something. A community can rally behind it. People around the world can participate. An audience can increase its reward. Someone can create a response worth rewarding—all without leaving the social experience.
+The included `vercel.json` runs `npm run build` and serves the generated `dist` directory.
 
-One Ralli can start with one person and end up reaching thousands.
+## Contributing
 
-One person starts it. Someone joins. Someone passes it on. **The crowd takes over.**
+Issues and pull requests are welcome. Keep changes focused, preserve the mobile-first interaction model, and run lint and build checks before submitting.
 
----
+## License
 
-## Ralli
-
-**Start it. Join it. Pass it on.**
+Ralli is open source under the [MIT License](LICENSE).
