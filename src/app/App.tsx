@@ -170,9 +170,10 @@ export default function App() {
         <SplashScreen key="splash" onComplete={finishSplash} />
       ) : (
         <motion.div
+          className="app-stage"
           key="app"
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0, 0, 0.2, 1] }}
         >
     {backendStatus === 'error' ? (

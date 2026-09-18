@@ -8,10 +8,10 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: #f3f2ee; }
-body { margin: 0; min-width: 320px; min-height: 100svh; }
+html { width: 100%; min-width: 320px; max-width: 100%; overflow-x: clip; background: #f3f2ee; }
+body { width: 100%; max-width: 100%; margin: 0; min-width: 320px; min-height: 100svh; overflow-x: clip; }
 button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 img { display: block; max-width: 100%; }
-#root { min-height: 100svh; }
+#root { width: 100%; max-width: 100%; min-height: 100svh; overflow-x: clip; }
